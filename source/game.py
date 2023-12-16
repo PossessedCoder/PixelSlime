@@ -1,20 +1,18 @@
 import pygame
-from pygame import Rect
-from pygame.sprite import Sprite
 
+from abstractions import SupportsDraw
 from utils import load_image
 
 
-class Field(Sprite):
+class Field(SupportsDraw):
 
     def __init__(self, surface, x, y, w, h):
-        super().__init__()
         self._surface = surface
 
         self._x, self._y, self._w, self._h, self._rows, self._cols = x, y, w, h, 0, 0
         self._cells = []
 
-        self._grid_enabled = False
+        self._grid = None
 
     def _cleanup(self):
         for item in self._cells:
@@ -22,14 +20,57 @@ class Field(Sprite):
                 continue
             self._cells.remove(item)
 
-    def _calc_cell_size(self):
-        return self._w / self.rows, self._h / self.cols
+    def calc_cell_size(self, width=..., height=..., rows=..., cols=...):
+        width = width if isinstance(width, int) else self._w
+        height = height if isinstance(height, int) else self._h
+        rows = rows if isinstance(rows, int) else self._rows
+        cols = cols if isinstance(cols, int) else self._cols
+
+        try:
+            return width / rows, height / cols
+        except ZeroDivisionError:
+            return
+
+    def get_adjusted(self):
+        """
+        adjusts rows and cols while first non-empty cell will not occur
+
+        :returns: tuple[tuple[int, int], tuple[int, int]] - left top point, right bottom point
+        """
+
+        if not self._cells:
+            return (0, 0), (0, 0)
+
+        minx, miny, maxx, maxy = self._rows, self._cols, 0, 0
+
+        for (row, col), _ in self._cells:
+            if row < minx:
+                minx = row
+            if col < miny:
+                miny = col
+            if row > maxx:
+                maxx = row
+            if col > maxy:
+                maxy = col
+
+        return (minx, miny), (maxx, maxy)
 
     def get_cells(self, *positions):
         return list(item for item in self._cells if item[0] in positions) if positions else self._cells
 
-    def set_cells(self, cells):
-        self._cells = list(tuple(item) for item in cells)
+    def add_cells(self, *positions):
+        cell_size = self.calc_cell_size()
+        self._cells.clear()
+
+        for position in positions:
+            self.remove_cells(position)
+            self._cells.append((position, Cell(self._surface, self._x + (position[0] - 1) * cell_size[0],
+                                               self._y + (position[1] - 1) * cell_size[1], *cell_size)))
+
+    def remove_cells(self, *positions):  # removes all if not provided
+        for item in self._cells:
+            if not positions or item in positions:
+                self._cells.remove(item)
 
     @property
     def rows(self):
@@ -50,15 +91,15 @@ class Field(Sprite):
         self._cleanup()
 
     @property
-    def grid_enabled(self):
-        return self._grid_enabled
+    def grid(self):
+        return self._grid
 
-    @grid_enabled.setter
-    def grid_enabled(self, state):
-        self._grid_enabled = state
+    @grid.setter
+    def grid(self, color):
+        self._grid = color
 
     def draw(self):
-        cell_size = self._calc_cell_size()
+        cell_size = self.calc_cell_size()
 
         for row in range(1, self._rows + 1):
             for col in range(1, self._cols + 1):
@@ -66,26 +107,25 @@ class Field(Sprite):
                 if cd:
                     cell: Cell = cd[0][1]
                     cell.w, cell.h = cell_size
-                elif self.grid_enabled:
+                elif self.grid:
                     cell = Cell(self._surface, self._x + cell_size[0] * (col - 1),
                                 self._y + cell_size[1] * (row - 1), *cell_size)
-                    cell.set_border('white')  # TODO: change color
+                    cell.set_border(self.grid, width=1)
                 else:
                     continue
                 cell.draw()
 
 
-class Cell(Sprite, Rect):
+class Cell(pygame.Rect, SupportsDraw):
 
     def __init__(self, surface, x, y, w, h):
-        Sprite.__init__(self)
-        Rect.__init__(self, x, y, w, h)
+        super().__init__(x, y, w, h)
 
         self._surface = surface
 
         self._image = None
         self._fill = None
-        self._border: dict[str, str | tuple[int, int, int]] | dict[str, None] = {
+        self._border: dict[str, str | tuple[int, int, int] | None] = {
             'left': None,
             'top': None,
             'right': None,

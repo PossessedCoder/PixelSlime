@@ -2,10 +2,12 @@ import sys
 
 import pygame
 
+from abstractions import SupportsDraw, SupportsEventLoop
 from constants import FPS, SCREEN_SIZE
+from editor import Editor
 
 
-class Main:
+class Main(SupportsEventLoop):
 
     def __init__(self):
         pygame.init()
@@ -13,20 +15,31 @@ class Main:
         self._screen = pygame.display.set_mode(SCREEN_SIZE)
         self._clock = pygame.time.Clock()
 
-        # self._current_working_window = ...  # Redefine on every window switch
-        #                                     # (e.g. menu -> editor, editor -> menu etc.) for convenient render
-        #                                     # in self.run method.
-        #                                     # Abstract class having method "render" should be implemented
+        self._current_working_window = Editor(self._screen)
+        self._current_working_window.rows, self._current_working_window.cols = 25, 25
+        self._current_working_window.grid_enabled = True
 
-    def _eventloop(self):
-        for event in pygame.event.get():
+        self._current_working_window.add_cells(*((i, k) for i in range(11, 16) for k in range(11, 16)))
+
+    def eventloop(self, *events):
+        for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
+    def handle(self):
+        self._screen.fill(pygame.Color(70, 71, 71))
+        events = pygame.event.get()
+
+        self.eventloop(*events)
+        if isinstance(self._current_working_window, SupportsEventLoop):
+            self._current_working_window.eventloop(*events)
+        if isinstance(self._current_working_window, SupportsDraw):
+            self._current_working_window.draw()
+
     def run(self):
         while True:
-            self._eventloop()
+            self.handle()
 
             pygame.display.flip()
             self._clock.tick(FPS)
