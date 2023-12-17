@@ -77,13 +77,16 @@ class Editor(Field, SupportsEventLoop):
             edgex, edgey = adj[0][0] if abs(adj[0][0] - pos[0]) < abs(adj[1][0] - pos[0]) else adj[1][0], \
                 adj[0][1] if abs(adj[0][1] - pos[1]) < abs(adj[1][1] - pos[1]) else adj[1][
                     1]  # С какого края был клик по гриду
-            print(pos[0], edgex, pos[1], edgey)
-            if (pos[0] + edgex) > (pos[1] + edgey) or abs(pos[0] - edgex) > abs(pos[1] - edgey): # Крч я не ебу как эта херня работает, но для x`а она хорошо работает, а как только подключаю y - всё ломается
-                if (pos[0] > edgex) and edgex == adj[1][0] or (pos[0] < edgex) and edgex == adj[0][0]:
-                    self.add_cells(*((pos[0] + int(not (pos[0] + edgex) > (pos[1] + edgey)), col) for col in
-                                     range(adj[0][1], adj[1][1] + 1))) # Я не ебу как эта страшная ебота работает
+            center = (adj[0][0] + adj[1][0] / 2, adj[0][1] + adj[1][1] / 2)
+            print(pos)
+            if center[0] - pos[0] > center[1] - pos[1] and edgex == adj[0][0]\
+                    or center[0] + pos[0] > center[1] + pos[1] and edgex == adj[1][0]: # Крч я не ебу как эта херня работает, но для x`а она хорошо работает, а как только подключаю y - всё ломается
+                if not self.get_cells(pos):
+                    self.add_cells(*(((adj[0][0] - 1) if edgex == adj[0][0] else (adj[1][0] + 1), col) for col in range(adj[0][1], adj[1][1] + 1))) # Я не ебу как эта страшная ебота работает
             else:
-                print(1)
+                if not self.get_cells(pos):
+                    self.add_cells(*((row, (adj[0][1] - 1) if edgey == adj[0][1] else (adj[1][1] + 1)) for row in
+                                     range(adj[0][0], adj[1][0] + 1)))
             # print('LEFT' if edgex == 11 else 'RIGHT')
             # print('UP' if edgey == 11 else 'DOWN')
 
