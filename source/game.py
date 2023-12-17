@@ -60,7 +60,6 @@ class Field(SupportsDraw):
 
     def add_cells(self, *positions):
         cell_size = self.calc_cell_size()
-        self._cells.clear()
 
         for position in positions:
             self.remove_cells(position)
@@ -108,8 +107,8 @@ class Field(SupportsDraw):
                     cell: Cell = cd[0][1]
                     cell.w, cell.h = cell_size
                 elif self.grid:
-                    cell = Cell(self._surface, self._x + cell_size[0] * (col - 1),
-                                self._y + cell_size[1] * (row - 1), *cell_size)
+                    cell = Cell(self._surface, self._x + cell_size[0] * (row - 1),
+                                self._y + cell_size[1] * (col - 1), *cell_size)
                     cell.set_border(self.grid, width=1)
                 else:
                     continue
