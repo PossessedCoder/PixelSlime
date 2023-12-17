@@ -78,7 +78,7 @@ class Editor(Field, SupportsEventLoop):
                 adj[0][1] if abs(adj[0][1] - pos[1]) < abs(adj[1][1] - pos[1]) else adj[1][
                     1]  # С какого края был клик по гриду
             print(pos[0], edgex, pos[1], edgey)
-            if (pos[0] + edgex) > (pos[1] + edgey) and abs(pos[0] - edgex) < abs(pos[1] - edgey): # Крч я не ебу как эта херня работает, но для x`а она хорошо работает, а как только подключаю y - всё ломается
+            if (pos[0] + edgex) > (pos[1] + edgey) or abs(pos[0] - edgex) > abs(pos[1] - edgey): # Крч я не ебу как эта херня работает, но для x`а она хорошо работает, а как только подключаю y - всё ломается
                 if (pos[0] > edgex) and edgex == adj[1][0] or (pos[0] < edgex) and edgex == adj[0][0]:
                     self.add_cells(*((pos[0] + int(not (pos[0] + edgex) > (pos[1] + edgey)), col) for col in
                                      range(adj[0][1], adj[1][1] + 1))) # Я не ебу как эта страшная ебота работает
