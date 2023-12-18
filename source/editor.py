@@ -2,7 +2,7 @@ import pygame
 
 from abstractions import SupportsEventLoop
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from game import Field
+from game import Field, Coordinates
 
 
 class Editor(Field, SupportsEventLoop):
@@ -38,9 +38,9 @@ class Editor(Field, SupportsEventLoop):
 
         cell_size = self.calc_cell_size()
         if adjust:
-            f_pos, f_size = self.get_adjusted()
-            fx, fy = self._x + (f_pos[0] - 1) * cell_size[0], self._y + (f_pos[1] - 1) * cell_size[1]
-            fw, fh = self._x + f_size[0] * cell_size[0] - fx, self._y + f_size[1] * cell_size[1] - fy
+            topleft, bottomright = self.get_adjusted()
+            fx, fy = self._x + (topleft.col - 1) * cell_size[0], self._y + (topleft.row - 1) * cell_size[1]
+            fw, fh = self._x + bottomright.col * cell_size[0] - fx, self._y + bottomright.row * cell_size[1] - fy
         else:
             fx, fy, fw, fh = self._x, self._y, self._w, self._h
 
@@ -56,22 +56,21 @@ class Editor(Field, SupportsEventLoop):
 
         return False
 
-    def _get_position_by_mouse_pos(self, current_mouse_pos):
-        cx, cy = current_mouse_pos
+    def _get_position_by_mouse_pos(self, mouse_pos):
+        cx, cy = mouse_pos
 
-        if not (self._x < cx < self._x + self._w and self._y < cy < self._y + self._h):
+        if not self._is_colliding_field(mouse_pos, border=False):
             return
 
-        return (cx - self._x) // int(self.calc_cell_size()[0]), (cy - self._y) // int(self.calc_cell_size()[1])
+        return Coordinates(
+            (cy - self._y) // int(self.calc_cell_size()[1]) + 1, (cx - self._x) // int(self.calc_cell_size()[0]) + 1
+        )
 
     def _onclick(self, start_mouse_pos):
 
         def _inner(current_mouse_pos):
             pos = self._get_position_by_mouse_pos(current_mouse_pos)
             adj = self.get_adjusted()
-            print(adj)
-            print(pos)
-            print()  # TODO: resize field by mouse pos
 
         if self._is_colliding_field(start_mouse_pos, adjust=True, body=False):
             return _inner
@@ -80,16 +79,15 @@ class Editor(Field, SupportsEventLoop):
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self._resizer = self._onclick(pygame.mouse.get_pos())
+                if self._resizer:
+                    self.grid = (255, 255, 255)
             if event.type == pygame.MOUSEBUTTONUP and self._resizer:
                 self._resizer = None
+                self.grid = None
             if event.type == pygame.MOUSEMOTION and self._resizer:
                 self._resizer(pygame.mouse.get_pos())
-        if self._resizer:
-            self.grid = (255, 255, 255)
-        else:
-            self.grid = None
 
-    def draw(self):
-        super().draw()
-        for cell in self._cells:
-            cell[1].set_border((114, 137, 218), width=3)
+    def add_cells(self, *positions):
+        super().add_cells(*positions)
+        for cell in self.get_cells(*positions, _map=lambda item: item[1]):
+            cell.set_border((114, 137, 218), width=3)
