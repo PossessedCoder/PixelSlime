@@ -48,10 +48,10 @@ class Editor(Field, SupportsEventLoop):
             return True
         if border:
             return (
-                    fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
-                    or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
-                    or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
-                    or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
+                fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
+                or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
+                or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
+                or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
             )
 
         return False
@@ -69,26 +69,9 @@ class Editor(Field, SupportsEventLoop):
         def _inner(current_mouse_pos):
             pos = self._get_position_by_mouse_pos(current_mouse_pos)
             adj = self.get_adjusted()
-            # print(adj)
-            # print(pos)
-            # TODO: resize field by mouse pos
-            if not pos:
-                return
-            edgex, edgey = adj[0][0] if abs(adj[0][0] - pos[0]) < abs(adj[1][0] - pos[0]) else adj[1][0], \
-                adj[0][1] if abs(adj[0][1] - pos[1]) < abs(adj[1][1] - pos[1]) else adj[1][
-                    1]  # С какого края был клик по гриду
-            center = (adj[0][0] + adj[1][0] / 2, adj[0][1] + adj[1][1] / 2)
+            print(adj)
             print(pos)
-            if center[0] - pos[0] > center[1] - pos[1] and edgex == adj[0][0]\
-                    or center[0] + pos[0] > center[1] + pos[1] and edgex == adj[1][0]: # Крч я не ебу как эта херня работает, но для x`а она хорошо работает, а как только подключаю y - всё ломается
-                if not self.get_cells(pos):
-                    self.add_cells(*(((adj[0][0] - 1) if edgex == adj[0][0] else (adj[1][0] + 1), col) for col in range(adj[0][1], adj[1][1] + 1))) # Я не ебу как эта страшная ебота работает
-            else:
-                if not self.get_cells(pos):
-                    self.add_cells(*((row, (adj[0][1] - 1) if edgey == adj[0][1] else (adj[1][1] + 1)) for row in
-                                     range(adj[0][0], adj[1][0] + 1)))
-            # print('LEFT' if edgex == 11 else 'RIGHT')
-            # print('UP' if edgey == 11 else 'DOWN')
+            print()  # TODO: resize field by mouse pos
 
         if self._is_colliding_field(start_mouse_pos, adjust=True, body=False):
             return _inner
