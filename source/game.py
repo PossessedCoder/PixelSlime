@@ -114,8 +114,8 @@ class Field(SupportsDraw):
 
         for position in positions:
             self.remove_cells(position)
-            self._cells.append((Coordinates(*position), Cell(self._surface, self._x + (position[1] - 1) * cell_size[0],
-                                                             self._y + (position[0] - 1) * cell_size[1], *cell_size)))
+            self._cells.append((Coordinates(*position), Cell(self._surface, self._x + (position[0] - 1) * cell_size[0],
+                                                             self._y + (position[1] - 1) * cell_size[1], *cell_size)))
 
     def remove_cells(self, *positions):  # removes all if not provided
         for item in self._cells:

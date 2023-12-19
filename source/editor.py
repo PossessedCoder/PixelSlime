@@ -48,10 +48,10 @@ class Editor(Field, SupportsEventLoop):
             return True
         if border:
             return (
-                fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
-                or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
-                or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
-                or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
+                    fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
+                    or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
+                    or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
+                    or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
             )
 
         return False
@@ -64,14 +64,25 @@ class Editor(Field, SupportsEventLoop):
 
         return (cx - self._x) // int(self.calc_cell_size()[0]), (cy - self._y) // int(self.calc_cell_size()[1])
 
-    def _onclick(self, start_mouse_pos):
+    def _onclick(self, start_mouse_pos, mouse_button):
 
         def _inner(current_mouse_pos):
             pos = self._get_position_by_mouse_pos(current_mouse_pos)
             adj = self.get_adjusted()
-            print(adj)
             print(pos)
-            print()  # TODO: resize field by mouse pos
+            if pos is None:
+                return
+            if pos[1] in range(adj[0][1], adj[1][1] + 1):
+                if not self.get_cells(pos) and mouse_button == 1:
+                    self.add_cells(*((pos[0], col) for col in range(adj[0][1], adj[1][1] + 1)))
+                elif self.get_cells(pos) and mouse_button == 3:
+                    self.remove_cells(*((pos[0], col) for col in range(adj[0][1], adj[1][1] + 1)))
+            else:
+                if not self.get_cells(pos) and mouse_button == 1:
+                    self.add_cells(*((row, pos[1]) for row in range(adj[0][0], adj[1][0] + 1)))
+                elif self.get_cells(pos) and mouse_button == 3:
+                    print(2)
+                    self.remove_cells(*((pos[0], col) for col in range(adj[0][1], adj[1][1] + 1)))
 
         if self._is_colliding_field(start_mouse_pos, adjust=True, body=False):
             return _inner
@@ -79,13 +90,13 @@ class Editor(Field, SupportsEventLoop):
     def eventloop(self, *events):
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:
-                self._resizer = self._onclick(pygame.mouse.get_pos())
+                self._resizer = self._onclick(pygame.mouse.get_pos(), event.button)
             if event.type == pygame.MOUSEBUTTONUP and self._resizer:
                 self._resizer = None
             if event.type == pygame.MOUSEMOTION and self._resizer:
                 self._resizer(pygame.mouse.get_pos())
         if self._resizer:
-            self.grid = (255, 255, 255)
+            self.grid = (255, 192, 203)
         else:
             self.grid = None
 
