@@ -2,7 +2,7 @@ import pygame
 
 from abstractions import SupportsEventLoop
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from game import Field
+from game import Field, TilePanel, Tile
 
 
 class Editor(Field, SupportsEventLoop):
@@ -15,7 +15,7 @@ class Editor(Field, SupportsEventLoop):
         x = (SCREEN_WIDTH - w) // 2
 
         super().__init__(surface, x, y, w, h)
-
+        self.tile = TilePanel(self._tiles_panel, (Tile('brick.png'), ), 20)
         self._resizer = None
 
     def _is_colliding_field(self, current_mouse_pos, adjust=False, body=True, border=True, border_extra_space=10):
@@ -101,6 +101,7 @@ class Editor(Field, SupportsEventLoop):
             self.grid = None
 
     def draw(self):
+        self.tile.draw()
         super().draw()
         for cell in self._cells:
             cell[1].set_border((114, 137, 218), width=3)

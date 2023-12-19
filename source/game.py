@@ -231,7 +231,25 @@ class Cell(pygame.Rect, SupportsDraw):
         self._border.update(update)  # type: ignore
 
 
-class TilePanel:  # Класс панельки с материалами
-    def __init__(self, tiles: list):
-        self.tiles_list = tiles.copy()
-        self.cell_list = []
+class Tile:
+    def __init__(self, image_name):
+        self.image = load_image(image_name)
+
+
+class TilePanel(SupportsDraw):  # Класс панельки с материалами
+    def __init__(self, surface: pygame.Surface,  tiles: tuple, cell_size):
+        self.tiles_list = tiles
+        self.cell_size = cell_size
+        self.surface = surface
+        self.rect_list = [(row, self.surface.get_rect().y, self.cell_size, self.cell_size) for row in
+                          range(self.surface.get_rect().x, len(self) * self.cell_size, self.cell_size)]
+        print(self.rect_list)
+        self.color = (255, 255, 255)
+
+    def __len__(self):
+        return len(self.tiles_list)
+
+    def draw(self):
+        for i, rect in enumerate(self.rect_list):
+            pygame.draw.rect(self.surface, self.color, rect, 40)
+            #self.surface.blit(self.tiles_list[i].image, rect)
