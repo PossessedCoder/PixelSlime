@@ -229,3 +229,9 @@ class Cell(pygame.Rect, SupportsDraw):
                        for idx, val in enumerate((left, top, right, bottom)) if val)
 
         self._border.update(update)  # type: ignore
+
+
+class TilePanel:  # Класс панельки с материалами
+    def __init__(self, tiles: list):
+        self.tiles_list = tiles.copy()
+        self.cell_list = []
