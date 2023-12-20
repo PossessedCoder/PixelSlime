@@ -2,7 +2,7 @@ import pygame
 
 from abstractions import SupportsEventLoop
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from game import Field, Coordinates
+from game import Field, TilePanel, Tile
 
 
 class Editor(Field, SupportsEventLoop):
@@ -15,7 +15,7 @@ class Editor(Field, SupportsEventLoop):
         x = (SCREEN_WIDTH - w) // 2
 
         super().__init__(surface, x, y, w, h)
-
+        self.tile = TilePanel(self._tiles_panel, (Tile('brick.png'), ), 20)
         self._resizer = None
 
     def _is_colliding_field(self, current_mouse_pos, adjust=False, body=True, border=True, border_extra_space=10):
@@ -38,9 +38,9 @@ class Editor(Field, SupportsEventLoop):
 
         cell_size = self.calc_cell_size()
         if adjust:
-            topleft, bottomright = self.get_adjusted()
-            fx, fy = self._x + (topleft.col - 1) * cell_size[0], self._y + (topleft.row - 1) * cell_size[1]
-            fw, fh = self._x + bottomright.col * cell_size[0] - fx, self._y + bottomright.row * cell_size[1] - fy
+            f_pos, f_size = self.get_adjusted()
+            fx, fy = self._x + (f_pos[0] - 1) * cell_size[0], self._y + (f_pos[1] - 1) * cell_size[1]
+            fw, fh = self._x + f_size[0] * cell_size[0] - fx, self._y + f_size[1] * cell_size[1] - fy
         else:
             fx, fy, fw, fh = self._x, self._y, self._w, self._h
 
@@ -56,84 +56,51 @@ class Editor(Field, SupportsEventLoop):
 
         return False
 
-    def _get_position_by_mouse_pos(self, mouse_pos):
-        cx, cy = mouse_pos
+    def _get_position_by_mouse_pos(self, current_mouse_pos):
+        cx, cy = current_mouse_pos
 
-        if not self._is_colliding_field(mouse_pos, border=False):
+        if not (self._x < cx < self._x + self._w and self._y < cy < self._y + self._h):
             return
 
-        return Coordinates(
-            (cy - self._y) // int(self.calc_cell_size()[1]) + 1, (cx - self._x) // int(self.calc_cell_size()[0]) + 1
-        )
+        return (cx - self._x) // int(self.calc_cell_size()[0]), (cy - self._y) // int(self.calc_cell_size()[1])
 
-    def _onclick(self, start_mouse_pos):
-        start_pos = self._get_position_by_mouse_pos(start_mouse_pos)
-        start_adj = self.get_adjusted()
-        prev_pos = start_pos
+    def _onclick(self, start_mouse_pos, mouse_button):
 
         def _inner(current_mouse_pos):
-            nonlocal prev_pos
-
             pos = self._get_position_by_mouse_pos(current_mouse_pos)
-            topleft, bottomright = self.get_adjusted()
+            adj = self.get_adjusted()
+            print(pos)
+            if pos is None:
+                return
+            if pos[1] in range(adj[0][1], adj[1][1] + 1) and pos[0] not in range(adj[0][0] + 1, adj[1][0]):
+                if self._cells and mouse_button == 1:
+                    self.add_cells(*((pos[0], col) for col in range(adj[0][1], adj[1][1] + 1)))
+                elif mouse_button == 3:
+                    self.remove_cells(*((pos[0], col) for col in range(adj[0][1], adj[1][1] + 1)))
+            else:
+                if self._cells and mouse_button == 1:
+                    self.add_cells(*((row, pos[1]) for row in range(adj[0][0], adj[1][0] + 1)))
+                elif mouse_button == 3:
+                    print(adj)
+                    self.remove_cells(*((row, pos[1]) for row in range(adj[0][0], adj[1][0] + 1)))
 
-            if pos is None or pos == prev_pos:
-                return  # ignores mouse move if mouse is out of field or previous pos == current pos
-
-            callback = (self.remove_cells if next(self.get_cells(pos), None) else self.add_cells)
-
-            # _is_colliding_field() method provides a border extra space feature,
-            # so adjacent cells must also be checked to avoid visual bugs. If you want to expand border_extra_size,
-            # you should calculate current cell size and rely on it when check these intersections, but while we're
-            # using default spacing, we can just check start_pos[idx] - 1 and start_pos[idx] + 1 cells
-            if start_adj[0].col in (start_pos.col, start_pos.col + 1)\
-                    or start_adj[1].col in (start_pos.col, start_pos.col - 1):
-                point = bottomright if pos.col >= bottomright.col or pos.col >= topleft.col\
-                                       and start_adj[1].col in (start_pos.col, start_pos.col - 1) else topleft
-                callback(  # type: ignore
-                    *(
-                        (row, col)
-                        for row in range(topleft.row, bottomright.row + 1)
-                        for col in range(min(pos.col, point.col), max(pos.col, point.col) + 1)
-                    )
-                )
-
-            topleft, bottomright = self.get_adjusted()
-
-            if start_adj[0].row in (start_pos.row, start_pos.row + 1)\
-                    or start_adj[1].row in (start_pos.row, start_pos.row - 1):
-                point = bottomright if pos.row >= bottomright.row or pos.row >= topleft.row\
-                                       and start_adj[1].row in (start_pos.row, start_pos.row - 1) else topleft
-                callback(  # type: ignore
-                    *(
-                        (row, col)
-                        for row in range(min(pos.row, point.row), max(pos.row, point.row) + 1)
-                        for col in range(topleft.col, bottomright.col + 1)
-                    )
-                )
-
-            if not self._cells:
-                self.add_cells(pos)
-
-            prev_pos = pos
-
-        if self._is_colliding_field(start_mouse_pos, adjust=True, body=False) and start_pos is not None:
+        if self._is_colliding_field(start_mouse_pos, adjust=True, body=False):
             return _inner
 
     def eventloop(self, *events):
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:
-                self._resizer = self._onclick(pygame.mouse.get_pos())
-                if self._resizer:
-                    self.grid = (255, 255, 255)
+                self._resizer = self._onclick(pygame.mouse.get_pos(), event.button)
             if event.type == pygame.MOUSEBUTTONUP and self._resizer:
                 self._resizer = None
-                self.grid = None
             if event.type == pygame.MOUSEMOTION and self._resizer:
                 self._resizer(pygame.mouse.get_pos())
+        if self._resizer:
+            self.grid = (255, 192, 203)
+        else:
+            self.grid = None
 
-    def add_cells(self, *positions):
-        super().add_cells(*positions)
-
-        for cell in self.get_cells(*positions, _map=lambda item: item[1]):
-            cell.set_border((114, 137, 218), width=3)
+    def draw(self):
+        super().draw()
+        for cell in self._cells:
+            cell[1].set_border((114, 137, 218), width=3)
