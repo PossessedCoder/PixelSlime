@@ -107,9 +107,9 @@ class Field(SupportsDraw):
         return Coordinates(min_row, min_col), Coordinates(max_row, max_col)
 
     def get_cells(self, *positions, _map=None):
-        return [_map(item) if callable(_map) else item for item in self._cells if not positions or item[0] in positions]
+        return (_map(item) if callable(_map) else item for item in self._cells if not positions or item[0] in positions)
 
-    def add_cells(self, *positions):  # Iterable[int, int] acceptable
+    def add_cells(self, *positions):
         cell_size = self.calc_cell_size()
 
         for position in positions:
@@ -118,9 +118,11 @@ class Field(SupportsDraw):
                                                              self._y + (position[1] - 1) * cell_size[1], *cell_size)))
 
     def remove_cells(self, *positions):  # removes all if not provided
-        for item in self._cells:
+        # iterate through reversed enumerate (which doesn't support __iter__, so convert to tuple first)
+        # since positions in self._cells changes on each self._cells.pop. self._cells.remove also leads to this bug
+        for idx, item in reversed(tuple(enumerate(self._cells))):
             if not positions or item[0] in positions:
-                self._cells.remove(item)
+                self._cells.pop(idx)
 
     @property
     def rows(self):
@@ -153,9 +155,8 @@ class Field(SupportsDraw):
 
         for row in range(1, self._rows + 1):
             for col in range(1, self._cols + 1):
-                cd = self.get_cells((row, col), _map=lambda item: item[1])
-                if cd:
-                    cell = cd[0]  # only one cell can be found on pos (row, col)
+                cell = next(self.get_cells((row, col), _map=lambda item: item[1]), None)
+                if cell:
                     cell.w, cell.h = cell_size
                 elif self.grid:
                     cell = Cell(self._surface, self._x + cell_size[0] * (row - 1),
