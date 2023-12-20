@@ -48,10 +48,10 @@ class Editor(Field, SupportsEventLoop):
             return True
         if border:
             return (
-                fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
-                or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
-                or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
-                or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
+                    fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
+                    or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
+                    or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
+                    or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
             )
 
         return False
@@ -67,12 +67,57 @@ class Editor(Field, SupportsEventLoop):
         )
 
     def _onclick(self, start_mouse_pos):
+        start_pos = self._get_position_by_mouse_pos(start_mouse_pos)
+        start_adj = self.get_adjusted()
+        prev_pos = start_pos
 
         def _inner(current_mouse_pos):
-            pos = self._get_position_by_mouse_pos(current_mouse_pos)
-            adj = self.get_adjusted()
+            nonlocal prev_pos
 
-        if self._is_colliding_field(start_mouse_pos, adjust=True, body=False):
+            pos = self._get_position_by_mouse_pos(current_mouse_pos)
+            topleft, bottomright = self.get_adjusted()
+
+            if pos is None or pos == prev_pos:
+                return  # ignores mouse move if mouse is out of field or previous pos == current pos
+
+            callback = (self.remove_cells if next(self.get_cells(pos), None) else self.add_cells)
+
+            # _is_colliding_field() method provides a border extra space feature,
+            # so adjacent cells must also be checked to avoid visual bugs. If you want to expand border_extra_size,
+            # you should calculate current cell size and rely on it when check these intersections, but while we're
+            # using default spacing, we can just check start_pos[idx] - 1 and start_pos[idx] + 1 cells
+            if start_adj[0].col in (start_pos.col, start_pos.col + 1)\
+                    or start_adj[1].col in (start_pos.col, start_pos.col - 1):
+                point = bottomright if pos.col >= bottomright.col or pos.col >= topleft.col\
+                                       and start_adj[1].col in (start_pos.col, start_pos.col - 1) else topleft
+                callback(  # type: ignore
+                    *(
+                        (row, col)
+                        for row in range(topleft.row, bottomright.row + 1)
+                        for col in range(min(pos.col, point.col), max(pos.col, point.col) + 1)
+                    )
+                )
+
+            topleft, bottomright = self.get_adjusted()
+
+            if start_adj[0].row in (start_pos.row, start_pos.row + 1)\
+                    or start_adj[1].row in (start_pos.row, start_pos.row - 1):
+                point = bottomright if pos.row >= bottomright.row or pos.row >= topleft.row\
+                                       and start_adj[1].row in (start_pos.row, start_pos.row - 1) else topleft
+                callback(  # type: ignore
+                    *(
+                        (row, col)
+                        for row in range(min(pos.row, point.row), max(pos.row, point.row) + 1)
+                        for col in range(topleft.col, bottomright.col + 1)
+                    )
+                )
+
+            if not self._cells:
+                self.add_cells(pos)
+
+            prev_pos = pos
+
+        if self._is_colliding_field(start_mouse_pos, adjust=True, body=False) and start_pos is not None:
             return _inner
 
     def eventloop(self, *events):
@@ -89,5 +134,6 @@ class Editor(Field, SupportsEventLoop):
 
     def add_cells(self, *positions):
         super().add_cells(*positions)
+
         for cell in self.get_cells(*positions, _map=lambda item: item[1]):
             cell.set_border((114, 137, 218), width=3)
