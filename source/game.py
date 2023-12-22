@@ -1,6 +1,6 @@
 import pygame
 
-from abstractions import SupportsDraw
+from abstractions import AbstractSurface
 from utils import load_image
 
 
@@ -55,12 +55,12 @@ class Coordinates:
         return f'<Coordinates({self.row}, {self.col})>'
 
 
-class Field(SupportsDraw):
+class Field(AbstractSurface):
 
-    def __init__(self, surface, x, y, w, h):
-        self._surface = surface
+    def __init__(self, x, y, w, h, parent=None):
+        super().__init__(x, y, w, h, parent=parent)
 
-        self._x, self._y, self._w, self._h, self._rows, self._cols = x, y, w, h, 0, 0
+        self._rows, self._cols = 0, 0
         self._cells = []
 
         self._grid = None
@@ -72,8 +72,8 @@ class Field(SupportsDraw):
             self._cells.remove(item)
 
     def calc_cell_size(self, width=..., height=..., rows=..., cols=...):
-        width = width if isinstance(width, int) else self._w
-        height = height if isinstance(height, int) else self._h
+        width = width if isinstance(width, int) else self.get_width()
+        height = height if isinstance(height, int) else self.get_height()
         rows = rows if isinstance(rows, int) else self._rows
         cols = cols if isinstance(cols, int) else self._cols
 
@@ -94,7 +94,7 @@ class Field(SupportsDraw):
 
         min_row, min_col, max_row, max_col = self._rows, self._cols, 1, 1
 
-        for row, col in self.get_cells(_map=lambda item: item[0]):
+        for row, col in map(lambda item: item[0], self.get_cells()):
             if row < min_row:
                 min_row = row
             if col < min_col:
@@ -106,16 +106,22 @@ class Field(SupportsDraw):
 
         return Coordinates(min_row, min_col), Coordinates(max_row, max_col)
 
-    def get_cells(self, *positions, _map=None):
-        return (_map(item) if callable(_map) else item for item in self._cells if not positions or item[0] in positions)
+    def get_cells(self, *positions):
+        return (item for item in self._cells if not positions or item[0] in positions)
 
     def add_cells(self, *positions):
         cell_size = self.calc_cell_size()
 
         for position in positions:
-            self.remove_cells(position)
-            self._cells.append((Coordinates(*position), Cell(self._surface, self._x + (position[1] - 1) * cell_size[0],
-                                                             self._y + (position[0] - 1) * cell_size[1], *cell_size)))
+            self.remove_cells(position)  # if cell on this position already exists it will be replaced with new one
+            self._cells.append(
+                (
+                    Coordinates(*position),
+                    Cell((position[1] - 1) * cell_size[0], (position[0] - 1) * cell_size[1], *cell_size, parent=self)
+                )
+            )
+
+        print(self._cells)
 
     def remove_cells(self, *positions):  # removes all if not provided
         # iterate through reversed enumerate (which doesn't support __iter__, so convert to tuple first)
@@ -151,31 +157,30 @@ class Field(SupportsDraw):
         self._grid = color
 
     def draw(self):
-        cell_size = self.calc_cell_size()
+        self.fill(self.parent.get_background_color())
 
+        cell_size = self.calc_cell_size()
         for row in range(1, self._rows + 1):
             for col in range(1, self._cols + 1):
-                cell = next(self.get_cells((row, col), _map=lambda item: item[1]), None)
+                cell = next(self.get_cells((row, col)), None)
                 if cell:
+                    cell = cell[1]
                     cell.w, cell.h = cell_size
                 elif self.grid:
-                    cell = Cell(self._surface, self._x + cell_size[0] * (col - 1),
-                                self._y + cell_size[1] * (row - 1), *cell_size)
+                    cell = Cell(cell_size[0] * (col - 1), cell_size[1] * (row - 1), *cell_size, parent=self)
                     cell.set_border(self.grid, width=1)
                 else:
                     continue
                 cell.draw()
+                self.blit(cell)
 
 
-class Cell(pygame.Rect, SupportsDraw):
+class Cell(AbstractSurface):
 
-    def __init__(self, surface, x, y, w, h):
-        super().__init__(x, y, w, h)
+    def __init__(self, x, y, w, h, parent=None):
+        super().__init__(x, y, w, h, parent=parent)
 
-        self._surface = surface
-
-        self._image = None
-        self._fill = None
+        self._color = None
         self._border: dict[str, str | tuple[int, int, int] | None] = {
             'left': None,
             'top': None,
@@ -184,42 +189,34 @@ class Cell(pygame.Rect, SupportsDraw):
         }
 
     def draw(self):
-        if self._image:
-            self._surface.blit(self._image, self)
-        if self._fill:
-            pygame.draw.rect(self._surface, self._fill, self)
+        self.fill(self.parent.get_background_color())
+
+        if self._color:
+            pygame.draw.rect(self, self._color, self.get_rect())
         if self._border['left']:
             pygame.draw.line(
-                self._surface, self._border['left'][0], self.bottomleft, self.topleft, self._border['left'][1]
+                self, self._border['left'][0], (0, 0), (0, self.get_height()), self._border['left'][1]
             )
         if self._border['top']:
             pygame.draw.line(
-                self._surface, self._border['top'][0], self.topleft, self.topright, self._border['top'][1]
+                self, self._border['top'][0], (0, 0), (self.get_width(), 0), self._border['top'][1]
             )
         if self._border['right']:
             pygame.draw.line(
-                self._surface, self._border['right'][0], self.topright, self.bottomright, self._border['right'][1]
+                self, self._border['right'][0], (self.get_width() - self._border['right'][1], 0), (self.get_width() - self._border['right'][1], self.get_height()), self._border['right'][1]
             )
         if self._border['bottom']:
             pygame.draw.line(
-                self._surface, self._border['bottom'][0], self.bottomleft, self.bottomright, self._border['bottom'][1]
+                self, self._border['bottom'][0], (0, self.get_height() - self._border['bottom'][1]), (self.get_width(), self.get_height() - self._border['bottom'][1]), self._border['bottom'][1]
             )
 
     @property
-    def image(self):
-        return self._image
+    def color(self):
+        return self._color
 
-    @image.setter
-    def image(self, image_name):
-        self._image = load_image(image_name)
-
-    @property
-    def fill(self):
-        return self._fill
-
-    @fill.setter
-    def fill(self, color):
-        self._fill = color
+    @color.setter
+    def color(self, clr):
+        self._color = clr
 
     @property
     def border(self):
@@ -230,3 +227,30 @@ class Cell(pygame.Rect, SupportsDraw):
                        for idx, val in enumerate((left, top, right, bottom)) if val)
 
         self._border.update(update)  # type: ignore
+
+
+class ImageCell(pygame.sprite.Sprite, Cell):
+    # Not tested, NOQA. Can work not as expected. Should be used later in editor.TilesPanel and game.Field
+
+    def __init__(self, x, y, w, h, parent=None, sprite_groups=None):
+        if sprite_groups is not None:
+            super(pygame.sprite.Sprite, self).__init__(*sprite_groups)
+        super(Cell, self).__init__(x, y, w, h, parent=parent)
+        self._image = None
+
+    @property
+    def image(self):
+        return self.image
+
+    @image.setter
+    def image(self, image_name):
+        self._image = load_image(image_name)
+
+    def draw(self):
+        super().draw()
+
+        if self._image:
+            self.blit(self._image)
+
+    def update(self, *args, **kwargs):
+        ...
