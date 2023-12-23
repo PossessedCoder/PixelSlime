@@ -61,3 +61,56 @@ class AbstractWindow(ABC, AbstractSurface):
     @abstractmethod
     def draw(self):
         raise NotImplemented(f'classes inherited from "{self.__class__.__name__}" must implement method "draw"')
+
+
+class AbstractTile(AbstractSurface):
+
+    def __init__(self, x, y, w, h, parent=None):
+        super().__init__(x, y, w, h, parent=parent)
+
+        self._image = None
+        self._color = None
+        self._border = None
+
+    def draw(self):
+        self.fill(self.parent.get_background_color())
+
+        if self._color:
+            pygame.draw.rect(self, self._color, self.get_rect())
+        if self._border:
+            pygame.draw.rect(self, self._border, (0, 0, self.get_width(), self.get_height()), 1)
+        if self._image:
+            self.blit(pygame.transform.scale(self._image, self.get_size()))
+
+    @property
+    def image(self):
+        return self.image
+
+    @image.setter
+    def image(self, loaded):
+        self._image = loaded
+
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, clr):
+        self._color = clr
+
+    @property
+    def border(self):
+        return self._border
+
+    @border.setter
+    def border(self, clr):
+        self._border = clr
+
+    # CHECKME
+    # def set_border(self, clr, left=True, top=True, right=True, bottom=True, width=1):
+    #     # Different width of border leads to draw issues:
+    #     # Surface's size is constrained, but rectangles' outline needs additional space
+    #     # adding partial (left, top, right, bottom) border also causes many problems,
+    #     # mainly because of the issue described above.
+    #     # Calculating indent for every side looks ugly and bugging even though
+    #     raise NotImplemented
