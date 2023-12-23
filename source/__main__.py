@@ -2,7 +2,6 @@ import sys
 
 import pygame
 
-from abstractions import SupportsDraw, SupportsEventLoop
 from constants import FPS, SCREEN_SIZE
 from editor import Editor
 
@@ -15,28 +14,24 @@ class Main:
         self._screen = pygame.display.set_mode(SCREEN_SIZE)
         self._clock = pygame.time.Clock()
 
-        # self._current_working_window = ...
+        # self._current_working_window = Menu()
+        self._current_working_window = Editor()
 
-        self._current_working_window = Editor(self._screen)
-        self._current_working_window.rows, self._current_working_window.cols = 25, 25
-        self._current_working_window.grid_enabled = True
-        self._current_working_window.add_cells(*((i, k) for i in range(11, 16) for k in range(11, 16)))
-
-    def _eventloop(self, *events):
-        for event in events:
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+    @staticmethod
+    def _eventloop(*events):
+        if pygame.QUIT in events:
+            pygame.quit()
+            sys.exit()
+        # other events should be processed by current working window
 
     def _handle(self):
-        self._screen.fill(pygame.Color(70, 71, 71))
-        events = pygame.event.get()
+        events = pygame.event.get()  # pygame clears stack after pygame.event.get()
 
         self._eventloop(*events)
-        if isinstance(self._current_working_window, SupportsEventLoop):
-            self._current_working_window.eventloop(*events)
-        if isinstance(self._current_working_window, SupportsDraw):
-            self._current_working_window.draw()
+        self._screen.blit(self._current_working_window, self._current_working_window.get_rect())
+
+        self._current_working_window.eventloop(*events)
+        self._current_working_window.draw()
 
     def run(self):
         while True:
