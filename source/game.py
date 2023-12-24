@@ -223,7 +223,6 @@ class Cell(pygame.sprite.Sprite, AbstractTile):
 class ArrowVector(Cell):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.angle = 0
         self.original_image = None
 
     @property
@@ -236,8 +235,8 @@ class ArrowVector(Cell):
         self.original_image = self._image.copy()
 
     def rotate(self, angle):
-        self._image = pygame.transform.rotate(self.original_image, self.angle)
-        self.angle += 1 % 360  # Value will reapeat after 359. This prevents angle to overflow.
+        self._image = pygame.transform.rotate(self.original_image, angle % 360)
+        print(self.angle)
         #x, y = self._rect.center  # Save its current center.
         #self._rect = self.image.get_rect()  # Replace old rect with new rect.
         #self._rect.center = (x, y)  # Put the new rect's center at old center.
@@ -245,6 +244,7 @@ class ArrowVector(Cell):
 
     def update(self, *events) -> None:
         self.rotate(45)
+
 
 
 class Hero(Cell):
