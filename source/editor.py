@@ -31,11 +31,12 @@ class Editor(AbstractWindow):
         self._field.rows, self._field.cols = 20, 20
         self._field.grid = (255, 255, 255)
         hero = Hero(self._field, (10, 10))
-        arrow_vector = ArrowVector(self._field, (10, 9))
+        arrow_vector = ArrowVector(self._field, (9, 10))
         self._field.add_cells(arrow_vector)
         self._field.add_cells(hero)
         hero.image = load_image('test_tile.png')
         arrow_vector.image = load_image('arrow.png')
+
     def eventloop(self, *events):
         ...
 

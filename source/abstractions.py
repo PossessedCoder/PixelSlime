@@ -84,7 +84,7 @@ class AbstractTile(AbstractSurface):
 
     @property
     def image(self):
-        return self.image
+        return self._image
 
     @image.setter
     def image(self, loaded):
