@@ -2,8 +2,6 @@ import pygame
 from dataclasses import dataclass
 
 from abstractions import AbstractSurface, AbstractTile
-import time
-import math
 
 
 @dataclass(eq=True, slots=True)
@@ -218,35 +216,3 @@ class Cell(pygame.sprite.Sprite, AbstractTile):
     @property
     def start_coordinates(self):
         return self._start_coordinates
-
-
-class ArrowVector(Cell):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.original_image = None
-
-    @property
-    def image(self):
-        return self._image
-
-    @image.setter
-    def image(self, loaded):
-        self._image = loaded
-        self.original_image = self._image.copy()
-
-    def rotate(self, angle):
-        self._image = pygame.transform.rotate(self.original_image, angle % 360)
-        print(self.angle)
-        #x, y = self._rect.center  # Save its current center.
-        #self._rect = self.image.get_rect()  # Replace old rect with new rect.
-        #self._rect.center = (x, y)  # Put the new rect's center at old center.
-        print(self._rect)
-
-    def update(self, *events) -> None:
-        self.rotate(45)
-
-
-
-class Hero(Cell):
-    def update(self, *events) -> None:
-        self.move(self.get_rect().x + 1, self.get_rect().y + 1)
