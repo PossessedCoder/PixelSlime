@@ -6,7 +6,7 @@ import pygame
 class AbstractSurface(pygame.Surface):
 
     def __init__(self, x, y, w, h, parent=None):
-        super().__init__((w, h))
+        super().__init__((w, h), pygame.SRCALPHA)
 
         self._rect = self.get_rect(topleft=(x, y))
         self._parent = parent
@@ -36,9 +36,33 @@ class AbstractSurface(pygame.Surface):
 
     def resize(self, w=..., h=...):
         if w != Ellipsis:
+            self.move(x=self._rect.x + (self._rect.w - w) // 2)
             self._rect.w = w
         if h != Ellipsis:
+            self.move(y=self._rect.y + (self._rect.h - h) // 2)
             self._rect.h = h
+
+    def scale(self, coefficient_width=1.0, coefficient_height=1.0):
+        self.resize(self.get_width() * coefficient_width, self.get_height() * coefficient_height)
+
+    def get_absolute_rect(self):
+        x, y = self.get_rect().topleft
+        parent = self._parent
+
+        while hasattr(parent, 'parent') and parent.parent:
+            try:
+                addx, addy = parent.get_rect().topleft
+                x += addx
+                y += addy
+            except AttributeError:
+                continue
+            finally:
+                parent = parent.parent
+
+        return pygame.Rect(x, y, self.get_width(), self.get_height())
+
+    def is_covered(self, pos):
+        return self.get_absolute_rect().collidepoint(*pos)
 
     def blit(self, source, rect=..., **kwargs):
         if rect == Ellipsis:
@@ -49,7 +73,7 @@ class AbstractSurface(pygame.Surface):
                     f'"rect" argument must be provided for classes which does not support "get_rect()" method '
                     f'(Could not get rect of "{source.__class__.__name__}" instance)'
                 ) from None
-        super().blit(source, rect, **kwargs)
+        super().blit(pygame.transform.scale(source, rect.size), rect, **kwargs)
 
 
 class AbstractWindow(ABC, AbstractSurface):
@@ -73,7 +97,6 @@ class AbstractTile(AbstractSurface):
         self._border = None
 
     def draw(self):
-        self.fill(self.parent.get_background_color())
 
         if self._color:
             pygame.draw.rect(self, self._color, self.get_rect())
@@ -114,3 +137,75 @@ class AbstractTile(AbstractSurface):
     #     # mainly because of the issue described above.
     #     # Calculating indent for every side looks ugly and bugging even though
     #     raise NotImplemented
+
+
+class _SupportsHover(AbstractSurface):
+
+    def __init__(self, x, y, w, h, parent=None):
+        super().__init__(x, y, w, h, parent=parent)
+        self._content_hovered, self._scale_x_hovered, self._scale_y_hovered, self._border_radius_hovered = None, 0, 1, 1
+        self._content_not_hovered, self._scale_x_not_hovered, self._scale_y_not_hovered, self._border_radius_not_hovered = None, 0, 1, 1
+
+    def set_content_hovered(self, content, scale_x=1, scale_y=1, border_radius=0):
+        self._content_hovered, self._border_radius_hovered, self._scale_x_hovered, self._scale_y_hovered = content, scale_x, scale_y, border_radius
+
+    def set_content_not_hovered(self, content, scale_x=1, scale_y=1, border_radius=0):
+        self._content_not_hovered, self._scale_x_not_hovered, self._scale_y_not_hovered, self._border_radius_not_hovered = content, scale_x, scale_y, border_radius
+
+    def draw(self):  # CHECKME: not implemented
+        self.fill(self.parent.get_background_color())
+
+        if self.is_covered(pygame.mouse.get_pos()):
+            if self._content_hovered:
+                self.blit(self._content_hovered)
+            self.scale(1 + self._scale_x, 1 + self._scale_y)
+            return
+
+        if self._content_not_hovered:
+            self.blit(self._content_not_hovered)
+        self.scale(1 - self._scale_x, 1 - self._scale_y)
+
+
+class Panel(ABC, AbstractSurface):
+
+    class _Button(AbstractSurface):
+
+        def __init__(self, x, y, w, h, parent=None, text=None, view=None):
+            super().__init__(x, y, w, h, parent=parent)
+
+            self.text = text
+            self.view = view
+            self.border_color = None
+            self.border_radius = 0
+
+        def draw(self):
+            self.fill(self.parent.get_background_color())
+
+            if self.is_covered(pygame.mouse.get_pos()):
+                fill = (87, 100, 230)
+                self.border_radius = 14
+                self.scale(1.5, 1.5)
+            else:
+                fill = (98, 106, 189)
+                self.border_radius = 15
+                self.scale(0.5, 0.5)
+            pygame.draw.rect(self, fill, (0, 0, *self.get_size()), border_radius=self.border_radius)
+
+    def __init__(self, x, y, w, h, parent=None):
+        super().__init__(x, y, w, h, parent)
+
+        self._buttons = []
+        self._content = None
+        self._additional = None
+
+    def add_buttons(self, *images):
+        for image in images:
+            self._buttons.append(self._Button(5, 5, 45, 45, self, view=image))
+
+    def remove_buttons(self, *buttons):
+        ...
+
+    def draw(self):
+        for button in self._buttons:
+            button.draw()
+            self.blit(button)

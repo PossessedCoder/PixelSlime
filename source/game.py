@@ -216,9 +216,3 @@ class Cell(pygame.sprite.Sprite, AbstractTile):
     @property
     def start_coordinates(self):
         return self._start_coordinates
-
-
-class Hero(Cell):
-
-    def update(self, *events) -> None:
-        self.move(self.get_rect().x + 1, self.get_rect().y + 1)
