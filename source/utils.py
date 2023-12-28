@@ -7,7 +7,7 @@ import pygame
 from constants import MEDIA_URL, DB_URL
 
 
-@cache  # use functools.lru_cache(maxsize={max_memory_usage_integer}) if there are memory issues
+@cache  # if there are memory issues, use functools.lru_cache(maxsize={max_memory_usage_integer})
 def load_image(image_name):
     return pygame.image.load(os.path.join(MEDIA_URL, image_name)).convert_alpha()
 
