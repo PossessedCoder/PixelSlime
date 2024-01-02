@@ -1,10 +1,10 @@
 import pygame
 
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_SIZE, Images
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_SIZE
 from game import Field
 from templates import BaseWindow, Panel, _SupportsHover
 from tiles import Hero
-from utils import load_image
+from utils import load_image, get_tiles
 
 
 class TilesPanel(Panel):
@@ -18,16 +18,16 @@ class TilesPanel(Panel):
 
         # TODO: remove code below. Test of buttons
         btn = _SupportsHover(35, 35, 45, 45, parent=self)
-        btn.set_not_hovered_view(load_image(Images.BACK), border_radius=14)
-        btn.set_hovered_view(load_image(Images.BACK), 1.05, 1.05, border_radius=11)
+        btn.set_not_hovered_view(load_image('back.png'), border_radius=14)
+        btn.set_hovered_view(load_image('back.png'), 1.05, 1.05, border_radius=11)
         self._buttons.append(btn)
         btn = _SupportsHover(100, 35, 45, 45, parent=self)
-        btn.set_not_hovered_view(load_image(Images.FORWARD), border_radius=14)
-        btn.set_hovered_view(load_image(Images.FORWARD), 1.05, 1.05, border_radius=11)
+        btn.set_not_hovered_view(load_image('forward.png'), border_radius=14)
+        btn.set_hovered_view(load_image('forward.png'), 1.05, 1.05, border_radius=11)
         self._buttons.append(btn)
         btn = _SupportsHover(35, 100, 45, 45, parent=self)
-        btn.set_not_hovered_view(load_image(Images.CLOSE), border_radius=14)
-        btn.set_hovered_view(load_image(Images.CLOSE), 1.05, 1.05, border_radius=11)
+        btn.set_not_hovered_view(load_image('close_window.png'), border_radius=14)
+        btn.set_hovered_view(load_image('close_window.png'), 1.05, 1.05, border_radius=11)
         self._buttons.append(btn)
 
     def draw(self):
@@ -54,9 +54,9 @@ class NotificationsPanel(Panel):
 
         self._current_notification = (pygame.Surface((0, 0)), pygame.Surface((0, 0)), pygame.Surface((0, 0)))
 
-        # TODO: remove code below. Test of notifications
-        self.add_notification('Вы открыли новый тайл', 'Доступен в редакторе уровней', load_image(Images.HERO))
-        self.add_notification('Вы открыли новый тайл', 'Доступен в редакторе уровней', load_image(Images.BACK))
+        # TODO: remove code below. Test of notifications and get_tiles() method
+        for tile in get_tiles().values():
+            self.add_notification('Вы открыли новый тайл', 'Доступен в редакторе уровней', load_image(tile.IMAGE_NAME))
 
     @property
     def current_title(self):
@@ -148,9 +148,8 @@ class Editor(BaseWindow):
         # TODO: TODO: remove code below. Test of hero
         hero = Hero(self._field, (5, 5))
         self._field.add_cells(hero)
-        hero.image = load_image(Images.HERO)
 
-    def eventloop(self, *events):
+    def eventloop(self):
         ...
 
     def draw(self):
