@@ -4,6 +4,7 @@ import pygame
 
 from constants import FPS, SCREEN_SIZE
 from editor import Editor
+from utils import catch_events
 
 
 class Main:
@@ -18,18 +19,16 @@ class Main:
         self._current_working_window = Editor()
 
     @staticmethod
-    def _eventloop(*events):
-        if pygame.QUIT in map(lambda event: event.type, events):
+    def _eventloop():
+        if pygame.QUIT in map(lambda event: event.type, catch_events()):
             sys.exit()  # terminates executing if pygame.quit() in run() didn't do it
         # other events should be processed by current working window
 
     def _handle(self):
-        events = pygame.event.get()  # pygame clears stack after pygame.event.get()
-
-        self._eventloop(*events)
+        self._eventloop()
         self._screen.blit(self._current_working_window, self._current_working_window.get_rect())
 
-        self._current_working_window.eventloop(*events)
+        self._current_working_window.eventloop()
         self._current_working_window.draw()
 
     def run(self):
