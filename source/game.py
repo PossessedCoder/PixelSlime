@@ -1,6 +1,7 @@
 import pygame
 from dataclasses import dataclass
 
+from source.utils import load_image
 from templates import BaseSurface
 
 
@@ -60,7 +61,7 @@ class Field(BaseSurface):
             (cx - self.get_rect().x) // int(self.calc_cell_size()[0]) + 1
         )
 
-    def is_colliding_field(self, current_mouse_pos, adjust=False, body=True, border=True, border_extra_space=10):
+    def is_colliding_field(self, current_mouse_pos, adjust=False, body=True, border=True, border_extra_space=0):
         """
         Checks if specified parts of field are covered by mouse
 
@@ -92,10 +93,10 @@ class Field(BaseSurface):
             return True
         if border:
             return (
-                    fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
-                    or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
-                    or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
-                    or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
+                fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
+                or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
+                or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
+                or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
             )
 
         return False
@@ -115,7 +116,7 @@ class Field(BaseSurface):
         """
         adjusts rows and cols while first non-empty cell will not occur
 
-        :returns: tuple[tuple[int, int], tuple[int, int]] - left top point, right bottom point
+        :returns: :class:`tuple[Coordinates, Coordinates]` - left top point, right bottom point
         """
 
         if not self._cells:
@@ -196,6 +197,10 @@ class Field(BaseSurface):
 
 
 class Cell(pygame.sprite.Sprite, BaseSurface):
+    # IMAGE_NAME is the class attribute serves to provide image name to be loaded by specific tile.
+    # It can be separately loaded outside of Cell's child __init__ method.
+    # If you need to access real image used by subclass, use the image property
+    IMAGE_NAME = None
 
     def __init__(self, field, coordinates, *groups):
         self._field = field
@@ -207,7 +212,7 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         pygame.sprite.Sprite.__init__(self, *groups)
         BaseSurface.__init__(self, x, y, w, h, parent=field)
 
-        self._image = None
+        self._image = pygame.transform.scale(load_image(self.IMAGE_NAME), (w, h)) if self.IMAGE_NAME else None
         self._color = None
         self._border = None
 
@@ -216,16 +221,12 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
             pygame.draw.rect(self, self.color, self.get_rect())
         if self.border:
             pygame.draw.rect(self, self.border, (0, 0, self.get_rect().w, self.get_rect().h), 1)
-        if self.image:
-            self.blit(self.image)
+        if self._image:
+            self.blit(self._image)
 
     @property
     def image(self):
-        return self._image
-
-    @image.setter
-    def image(self, loaded):
-        self._image = pygame.transform.scale(loaded, self.get_rect().size)
+        return self._image.copy()
 
     @property
     def color(self):
