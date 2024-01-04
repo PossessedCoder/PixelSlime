@@ -1,7 +1,8 @@
 import pygame
 from dataclasses import dataclass
 
-from abstractions import AbstractSurface, AbstractTile
+from source.utils import load_image
+from templates import BaseSurface
 
 
 @dataclass(eq=True, slots=True)
@@ -30,7 +31,7 @@ class Coordinates:
         raise ValueError('Index must be 0 - row or 1 - column')
 
 
-class Field(AbstractSurface):
+class Field(BaseSurface):
 
     def __init__(self, x, y, w, h, parent=None):
         super().__init__(x, y, w, h, parent=parent)
@@ -60,7 +61,7 @@ class Field(AbstractSurface):
             (cx - self.get_rect().x) // int(self.calc_cell_size()[0]) + 1
         )
 
-    def is_colliding_field(self, current_mouse_pos, adjust=False, body=True, border=True, border_extra_space=10):
+    def is_colliding_field(self, current_mouse_pos, adjust=False, body=True, border=True, border_extra_space=0):
         """
         Checks if specified parts of field are covered by mouse
 
@@ -92,19 +93,19 @@ class Field(AbstractSurface):
             return True
         if border:
             return (
-                    fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
-                    or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
-                    or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
-                    or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
+                fx - border_extra_space < cx < fx + border_extra_space and fy < cy < fy + fh
+                or fy - border_extra_space < cy < fy + border_extra_space and fx < cx < fx + fw
+                or fx + fw - border_extra_space < cx < fx + fw + border_extra_space and fy < cy < fy + fh
+                or fy + fh - border_extra_space < cy < fy + fh + border_extra_space and fx < cx < fx + fw
             )
 
         return False
 
     def calc_cell_size(self, width=..., height=..., rows=..., cols=...):
-        width = width if isinstance(width, int) else self.get_width()
-        height = height if isinstance(height, int) else self.get_height()
-        rows = rows if isinstance(rows, int) else self._rows
-        cols = cols if isinstance(cols, int) else self._cols
+        width = width if isinstance(width, int) else self.get_rect().w
+        height = height if isinstance(height, int) else self.get_rect().h
+        rows = rows if isinstance(rows, int) else self.rows
+        cols = cols if isinstance(cols, int) else self.cols
 
         try:
             return width / cols, height / rows
@@ -115,7 +116,7 @@ class Field(AbstractSurface):
         """
         adjusts rows and cols while first non-empty cell will not occur
 
-        :returns: tuple[tuple[int, int], tuple[int, int]] - left top point, right bottom point
+        :returns: :class:`tuple[Coordinates, Coordinates]` - left top point, right bottom point
         """
 
         if not self._cells:
@@ -141,12 +142,10 @@ class Field(AbstractSurface):
     def add_cells(self, *cells):
         for cell in cells:
             self.remove_cells(cell.start_coordinates)  # replaces cell on cell.coordinates if it's already exists
-            self._cells.add(cell)  # type: ignore
+            self._cells.add(cell)
         self._cleanup()
 
     def remove_cells(self, *cells):  # removes all if not provided
-        # iterate through reversed enumerate (which doesn't support __iter__, so convert to tuple first)
-        # since positions in self._cells changes on each self._cells.pop. self._cells.remove also leads to this bug
         self._cells.remove(*cells)
 
     @property
@@ -190,14 +189,18 @@ class Field(AbstractSurface):
             self.blit(cell)
 
     def draw(self):
-        self.fill(self.parent.get_background_color())
+        self.fill((255, 255, 255, 0))
 
         if self.grid:
             self._draw_grid()
         self._draw_cells()
 
 
-class Cell(pygame.sprite.Sprite, AbstractTile):
+class Cell(pygame.sprite.Sprite, BaseSurface):
+    # IMAGE_NAME is the class attribute serves to provide image name to be loaded by specific tile.
+    # It can be separately loaded outside of Cell's child __init__ method.
+    # If you need to access real image used by subclass, use the image property
+    IMAGE_NAME = None
 
     def __init__(self, field, coordinates, *groups):
         self._field = field
@@ -207,11 +210,39 @@ class Cell(pygame.sprite.Sprite, AbstractTile):
         x, y = (self._start_coordinates.col - 1) * w, (self._start_coordinates.row - 1) * h
 
         pygame.sprite.Sprite.__init__(self, *groups)
-        AbstractTile.__init__(self, x, y, w, h, parent=field)
+        BaseSurface.__init__(self, x, y, w, h, parent=field)
 
-        self._image = None
+        self._image = pygame.transform.scale(load_image(self.IMAGE_NAME), (w, h)) if self.IMAGE_NAME else None
         self._color = None
         self._border = None
+
+    def draw(self):
+        if self.color:
+            pygame.draw.rect(self, self.color, self.get_rect())
+        if self.border:
+            pygame.draw.rect(self, self.border, (0, 0, self.get_rect().w, self.get_rect().h), 1)
+        if self._image:
+            self.blit(self._image)
+
+    @property
+    def image(self):
+        return self._image.copy()
+
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, clr):
+        self._color = clr
+
+    @property
+    def border(self):
+        return self._border
+
+    @border.setter
+    def border(self, clr):
+        self._border = clr
 
     @property
     def start_coordinates(self):
