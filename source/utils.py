@@ -12,6 +12,11 @@ def load_image(image_name):
     return pygame.image.load(os.path.join(MEDIA_URL, image_name)).convert_alpha()
 
 
+def post_event(event_or_code, **params):
+    e = pygame.event.Event(event_or_code, **params) if isinstance(event_or_code, int) else event_or_code
+    pygame.event.post(e)
+
+
 def get_tiles(*names):
     """
     gets tiles (classes that inherit Cell) defined in tiles.py
@@ -27,7 +32,7 @@ def get_tiles(*names):
     result = {}
     names = tuple(map(str.lower, names))
 
-    for name, obj in vars(tiles).items():  # vars(tiles) returns dictionary {name-of-object: object-defined-in-module}
+    for name, obj in vars(tiles).items():  # vars(tiles) returns dictionary {name-of-object: object-defined-in-tiles.py}
         if isinstance(obj, type) and issubclass(obj, Cell) and obj != Cell and (not names or name.lower() in names):
             result[name] = obj
 
@@ -38,14 +43,14 @@ def _store_queue(fn):
     _stored_queue = []
 
     @wraps(fn)
-    def _wrapper(_update_queue=True):
+    def __wrapper__(_update_queue=True):
         nonlocal _stored_queue
 
         if _update_queue:
             _stored_queue = fn(_update_queue)
         return _stored_queue
 
-    return _wrapper
+    return __wrapper__
 
 
 @_store_queue
@@ -56,12 +61,8 @@ def catch_events(_update_queue=True):
 class DataBase:
 
     def __init__(self):
-        self._cursor = self._get_cursor()
-
-    @staticmethod
-    def _get_cursor():
         with sqlite3.connect(DB_URL) as connection:
-            return connection.cursor()
+            self._cursor = connection.cursor()
 
     def _commit(self):
         self._cursor.connection.commit()
