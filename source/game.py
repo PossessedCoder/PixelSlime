@@ -1,7 +1,8 @@
-import pygame
 from dataclasses import dataclass
 
-from source.utils import load_image
+import pygame
+
+from utils import load_image
 from templates import BaseSurface
 
 
@@ -57,8 +58,8 @@ class Field(BaseSurface):
             return
 
         return Coordinates(
-            (cy - self.get_rect().y) // int(self.calc_cell_size()[1]) + 1,
-            (cx - self.get_rect().x) // int(self.calc_cell_size()[0]) + 1
+            int((cy - self.get_rect().y) / self.calc_cell_size()[1] + 1),
+            int((cx - self.get_rect().x) / self.calc_cell_size()[0] + 1)
         )
 
     def is_colliding_field(self, current_mouse_pos, adjust=False, body=True, border=True, border_extra_space=0):
@@ -179,7 +180,7 @@ class Field(BaseSurface):
             for col in range(1, self._cols + 1):
                 cell = Cell(self, (row, col))
                 cell.border = self.grid
-                cell.draw()
+                cell.handle()
                 self.blit(cell)
 
     def _draw_cells(self):
@@ -188,7 +189,7 @@ class Field(BaseSurface):
             cell.draw()
             self.blit(cell)
 
-    def draw(self):
+    def handle(self):
         self.fill((255, 255, 255, 0))
 
         if self.grid:
@@ -216,13 +217,17 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         self._color = None
         self._border = None
 
-    def draw(self):
+    def _draw(self):
         if self.color:
             pygame.draw.rect(self, self.color, self.get_rect())
         if self.border:
             pygame.draw.rect(self, self.border, (0, 0, self.get_rect().w, self.get_rect().h), 1)
         if self._image:
             self.blit(self._image)
+
+    def handle(self):
+        self.update()
+        self._draw()
 
     @property
     def image(self):
