@@ -1,15 +1,16 @@
 import pygame
 
+from constants import Images
 from templates import BaseSurface
 from game import Cell
 from utils import load_image
 
 
 class Hero(Cell):
-    IMAGE_NAME = 'test_tile.png'
+    IMAGE_NAME = Images.HERO
 
     class _ArrowVector(BaseSurface):  # Do not inherit from cell. Field.add_cells() will cause issues
-        IMAGE_NAME = 'arrow_vector.png'
+        IMAGE_NAME = Images.ARROW_VECTOR
 
         def __init__(self, x, y, w, h, parent=None):
             super().__init__(x, y, w, h, parent=parent)
@@ -21,16 +22,11 @@ class Hero(Cell):
         def angle(self):
             return self._angle
 
-        # no need in this property. Image is only used in instances of _ArrowVector
-        # @property
-        # def image(self):
-        #     return self._image.copy()
-
         def rotate(self, angle):
             self._angle = (self._angle + angle) % 360  # Value will repeat after 359. This prevents angle to overflow.
             self._image = pygame.transform.rotate(self._original_image, self._angle)
 
-        def draw(self):
+        def handle(self):
             self.fill((255, 255, 255, 0))
             self.blit(self._image)
 
@@ -48,10 +44,10 @@ class Hero(Cell):
         self.move(self.get_rect().x + 1, self.get_rect().y + 1)
         self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
 
-    def draw(self):
-        super().draw()
+    def handle(self):
+        super().handle()
 
         if self._arrowed:
             self._arrow_vector.rotate(1.5)
-            self._arrow_vector.draw()
+            self._arrow_vector.handle()
             self._field.blit(self._arrow_vector)
