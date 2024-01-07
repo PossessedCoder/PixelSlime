@@ -2,7 +2,7 @@ import sys
 
 import pygame
 
-from constants import FPS, SCREEN_SIZE
+from constants import FPS, SCREEN_SIZE, UserEvents
 from editor import Editor
 from utils import catch_events
 
@@ -10,26 +10,27 @@ from utils import catch_events
 class Main:
 
     def __init__(self):
-        pygame.init()
-
-        self._screen = pygame.display.set_mode(SCREEN_SIZE)
+        self._screen = pygame.display.set_mode(SCREEN_SIZE, pygame.FULLSCREEN)
         self._clock = pygame.time.Clock()
 
-        # self._current_working_window = Menu()
-        self._current_working_window = Editor()
+        # self._windows_stack = [Menu()]
+        self._windows_stack = [Editor()]
 
-    @staticmethod
-    def _eventloop():
-        if pygame.QUIT in map(lambda event: event.type, catch_events()):
-            sys.exit()  # terminates executing if pygame.quit() in run() didn't do it
-        # other events should be processed by current working window
+    def _eventloop(self):
+        for event in catch_events():  # gets a new queue of events
+            if event.type == UserEvents.SET_CWW and self._windows_stack[-1] != event.window:
+                self._windows_stack.append(event.window)
+            if event.type == UserEvents.CLOSE_CWW:
+                self._windows_stack.pop()
+            if event.type == pygame.QUIT or not self._windows_stack:
+                sys.exit()  # terminates executing if pygame.quit() in run() didn't do it
 
     def _handle(self):
         self._eventloop()
-        self._screen.blit(self._current_working_window, self._current_working_window.get_rect())
 
-        self._current_working_window.eventloop()
-        self._current_working_window.draw()
+        current_working_window = self._windows_stack[-1]
+        self._screen.blit(current_working_window, current_working_window.get_rect())
+        current_working_window.handle()
 
     def run(self):
         try:
