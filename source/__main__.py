@@ -25,7 +25,7 @@ class Main:
             if event.type == pygame.QUIT or not self._windows_stack:
                 sys.exit()  # terminates executing if pygame.quit() in run() didn't do it
 
-    def _handle(self):
+    def _mainloop(self):
         self._eventloop()
 
         current_working_window = self._windows_stack[-1]
@@ -35,7 +35,7 @@ class Main:
     def run(self):
         try:
             while True:
-                self._handle()
+                self._mainloop()
 
                 pygame.display.flip()
                 self._clock.tick(FPS)
