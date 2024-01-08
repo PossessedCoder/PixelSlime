@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 
 import pygame
@@ -7,7 +6,7 @@ from constants import FPS, UserEvents
 from utils import catch_events, post_event
 
 
-class BaseSurface(ABC, pygame.Surface):
+class BaseSurface(pygame.Surface):
     # Since BaseSurface class supports resizing, pygame.Surface.get_width(), pygame.Surface.get_height(),
     # pygame.Surface.get_size() methods return fake (initial) values, be careful with its usage. To get actual size of
     # any surface, use BaseSurface.get_rect() method
@@ -15,15 +14,25 @@ class BaseSurface(ABC, pygame.Surface):
     def __init__(self, x, y, w, h, parent=None):
         # transparent surface (pygame.SRCALPHA). If surface is transformable, fill it with transparent rect (alpha=0)
         # on every update (e.g. self.fill(255, 255, 255, 0))
-        pygame.Surface.__init__(self, (w, h), pygame.SRCALPHA)
+        super().__init__((w, h), pygame.SRCALPHA)
 
         self._rect = self.get_rect(topleft=(x, y))
         self._parent = parent
         self._background = pygame.Color((0, 0, 0))
 
-    @abstractmethod
     def handle(self):
-        raise NotImplementedError('child-class must implement method "handle"')
+        # this method should mainly be called to update a surface, but if you wish to ignore any of methods:
+        # draw() or eventloop(), you can call them separately. classes which inherit BaseSurface recommended to override
+        # draw() and/or eventloop() methods, but it's also available to override handle() if required
+
+        self.draw()
+        self.eventloop()
+
+    def draw(self):
+        return
+
+    def eventloop(self):
+        return
 
     @property
     def parent(self):
@@ -96,9 +105,6 @@ class BaseWindow(BaseSurface):
         super().__init__(x, y, w, h)
         post_event(UserEvents.SET_CWW, window=self)
 
-    def handle(self):
-        super().handle()
-
 
 class _SupportsHover(BaseSurface):
 
@@ -153,7 +159,7 @@ class _SupportsHover(BaseSurface):
         pygame.draw.rect(border, (255, 255, 255), (0, 0, *self.get_size()), border_radius=border_radius)
         self.blit(border, rect=pygame.Rect(0, 0, *self.get_size()), special_flags=pygame.BLEND_RGBA_MIN)
 
-    def handle(self):
+    def draw(self):
         if self.get_absolute_rect().collidepoint(*pygame.mouse.get_pos()):
             draw_data = self._hover_data
         else:
@@ -228,7 +234,7 @@ class Button(_SupportsHover):
         for callback in callbacks:
             callback()
 
-    def _eventloop(self):
+    def eventloop(self):
         for event in catch_events(False):
             try:
                 button = tuple(self._callbacks_press.keys())[event.button - 1]
@@ -240,11 +246,6 @@ class Button(_SupportsHover):
                 self.release(button)
         for hb in self._held:
             self._invoke(*self._callbacks_hold[hb])
-
-    def handle(self, partial=False):
-        self._eventloop()
-        if not partial:
-            super().handle()
 
 
 class Panel(BaseSurface):
@@ -286,6 +287,8 @@ class Panel(BaseSurface):
         return self.get_absolute_rect().collidepoint(*pygame.mouse.get_pos()) or self._show_till > datetime.now()
 
     def handle(self):
+        super().handle()
+
         if self._is_active() and not self.is_maximized():
             additions = self._additions
         elif not (self._is_active() or self.is_minimized()):
@@ -355,7 +358,7 @@ class LowerPanel(Panel):
 
         return x, y, button_size, button_size
 
-    def _draw(self):
+    def draw(self):
         self.fill((40, 43, 48))
 
         pygame.draw.line(self, (98, 98, 98), *self._separator_points)
@@ -370,7 +373,3 @@ class LowerPanel(Panel):
             self.fill(self.get_background_color())
 
         pygame.draw.line(self, (98, 98, 98), (0, 0), (self.get_rect().w, 0))
-
-    def handle(self):
-        super().handle()
-        self._draw()

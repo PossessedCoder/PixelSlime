@@ -185,11 +185,10 @@ class Field(BaseSurface):
 
     def _draw_cells(self):
         for cell in self._cells:
-            cell.update()
-            cell.draw()
+            cell.handle()
             self.blit(cell)
 
-    def handle(self):
+    def draw(self):
         self.fill((255, 255, 255, 0))
 
         if self.grid:
@@ -217,7 +216,7 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         self._color = None
         self._border = None
 
-    def _draw(self):
+    def draw(self):
         if self.color:
             pygame.draw.rect(self, self.color, self.get_rect())
         if self.border:
@@ -227,7 +226,7 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
 
     def handle(self):
         self.update()
-        self._draw()
+        super().handle()
 
     @property
     def image(self):

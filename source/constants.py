@@ -28,5 +28,5 @@ class Images:
     CLOSE_WINDOW = 'close_window.png'
 
     # tiles (and their dependencies)
-    HERO = 'test_tile.png'
+    HERO = 'hero.png'
     ARROW_VECTOR = 'arrow_vector.png'

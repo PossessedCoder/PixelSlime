@@ -87,7 +87,7 @@ class Editor(BaseWindow):
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
 
-    def _eventloop(self):
+    def eventloop(self):
         for event in catch_events(False):
             if event.type == UserEvents.TILE_CAPTURED:
                 self._captured_tile = event.tile
@@ -132,19 +132,19 @@ class Editor(BaseWindow):
             if self._buttoned_cells != previous_buttoned_cells:  # skip drawing if there is no changes
                 self._field.handle()
                 for ft in self._buttoned_cells:
-                    ft.handle()
+                    ft.draw()
                     self._field.blit(ft)
 
             previous_buttoned_cells = self._buttoned_cells.copy()
 
-            for ft in self._buttoned_cells:  # force events handling
-                ft.handle(partial=True)
+            for ft in self._buttoned_cells:  # force events handling even if field is not updated
+                ft.eventloop()
 
             self.blit(self._field)
 
         return _updater
 
-    def handle(self):
+    def draw(self):
         self.fill((54, 57, 62))
 
         self._field_updater()
@@ -152,5 +152,3 @@ class Editor(BaseWindow):
         # if there are FPS issues, optimize the code below with lazy callees only on update (change of the rect)
         self._tiles_panel.handle()
         self.blit(self._tiles_panel)
-
-        self._eventloop()
