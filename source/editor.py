@@ -110,10 +110,6 @@ class Editor(BaseWindow):
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
 
-        from tiles import Hero
-        hero = Hero(self._field, (5, 5))
-        self._field.add_cells(hero)
-
     def eventloop(self):
         for event in catch_events(False):
             # LMB pressed and colliding field and not colliding tiles panel and any tile captured
@@ -174,7 +170,6 @@ class Editor(BaseWindow):
         self.fill((54, 57, 62))
 
         self._field_updater()
-        self._field.handle()
 
         # if there are FPS issues, optimize the code below with lazy callees only on update (change of the rect)
         self._tiles_panel.handle()
