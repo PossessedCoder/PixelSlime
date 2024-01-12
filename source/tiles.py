@@ -51,7 +51,7 @@ class Hero(Cell):
             *self.get_rect().size
         )
 
-    def update(self, *events) -> None:
+    def update(self, *events):
         self.move(self.get_rect().x, self.get_rect().y)
         self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
         if self._arrowed:

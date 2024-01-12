@@ -11,39 +11,62 @@ class TilesPanel(LowerPanel):
     def __init__(self, minimized_rect, maximized_rect, resize_time, parent=None):
         super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
 
+        buttons_not_hovered_view = {'scale_x': 1, 'scale_y': 1, 'border_radius': 14}
+        buttons_hovered_view = {'scale_x': 1.05, 'scale_y': 1.05, 'border_radius': 11}
         buttons_data = (
-            (Images.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),)),
+            (Images.RUN, (lambda: None,)),
+            # actually bad practice to use setattr for parent's private attributes, but cannot use events everywhere,
+            # because pygame has limitations on user events number: maximum 9 (with ids from 24 to 32)
+            (Images.TRASH_BIN, (lambda: setattr(self.parent, '_buttoned_cells', list()),)),
+            (Images.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),))
         )
 
         for image_name, callbacks in buttons_data:
-            self.add_button(self.build_default_button(load_image(image_name), *callbacks))
+            btn = Button(-1, -1, 50, 50, parent=self)
+            buttons_hovered_view['content'] = load_image(image_name)
+            buttons_not_hovered_view['content'] = load_image(image_name)
+            btn.set_hovered_view(**buttons_hovered_view)
+            btn.set_not_hovered_view(**buttons_not_hovered_view)
+            btn.bind_press(*callbacks)
+            self.add_button(btn)
 
+        self._captured_tile = None
         self._available_tiles = []
         self._get_available_tiles()
+
+    @property
+    def captured_tile(self):
+        return self._captured_tile
 
     # CHECKME: conceptual method, should be changed when db API will be ready
     def _get_available_tiles(self):
         tls = get_tiles()
 
+        def _tile_preview_onclick(button, factory):
+            self._captured_tile = factory
+            button.captured = True
+            button.emit_hover(state=True)
+
+            for button_it in self._available_tiles:
+                if hasattr(button_it, 'captured') and button_it != button:
+                    del button_it.captured
+                    button_it.remove_hover()
+
         x, y = 10 + SCREEN_WIDTH // 5, 35
         for tile in tls.values():
-            img = pygame.transform.scale(load_image(tile.IMAGE_NAME), (45, 45))
-            btn = Button(x, y, *img.get_rect().size, parent=self)
+            img = pygame.transform.scale(load_image(tile.IMAGE_NAME), (100, 100))
+            btn = Button(x, y, 48, 48, parent=self)
             btn.set_not_hovered_view(img)
-            btn.set_hovered_view(img, 1.05, 1.05)
-            btn.bind_press(
-                (lambda b, t: lambda: post_event(UserEvents.TILE_CAPTURED, tile=t) or setattr(b, 'captured', True) or
-                    [delattr(b_, 'captured') for b_ in self._available_tiles if hasattr(b_, 'captured') and b_ != b])
-                (btn, tile)
-            )
+            btn.set_hovered_view(img, 1.09, 1.09)
+            btn.bind_press((lambda *args: lambda: _tile_preview_onclick(*args))(btn, tile))
             self._available_tiles.append(btn)
             x += 65
             if x + btn.get_rect().w > self.get_rect().w:
                 y += 65
                 x = 10 + SCREEN_WIDTH // 5
 
-    def handle(self):
-        super().handle()
+    def draw(self):
+        super().draw()
 
         if self.is_minimized():
             return
@@ -52,6 +75,7 @@ class TilesPanel(LowerPanel):
             tile.handle()
             self.blit(tile)
             if hasattr(tile, 'captured'):
+                # cannot use properties of _SupportsBorder on Button class since they are refreshed in _draw method
                 pygame.draw.rect(self, (42, 199, 186), tile.get_rect(), width=3)
 
 
@@ -83,15 +107,11 @@ class Editor(BaseWindow):
         self._field.rows, self._field.cols = 15, 15
         self._field.grid = (255, 255, 255)
 
-        self._captured_tile = None
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
 
     def eventloop(self):
         for event in catch_events(False):
-            if event.type == UserEvents.TILE_CAPTURED:
-                self._captured_tile = event.tile
-
             # LMB pressed and colliding field and not colliding tiles panel and any tile captured
             if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
                 continue
@@ -99,11 +119,13 @@ class Editor(BaseWindow):
                 continue
             if self._tiles_panel.get_rect().collidepoint(*pygame.mouse.get_pos()):
                 continue
-            if not self._captured_tile:
+            if not self._tiles_panel.captured_tile:
                 continue
 
-            # initialize real tile
-            cell = self._captured_tile(self._field, self._field.get_position_by_mouse_pos(pygame.mouse.get_pos()))
+            # init real cell
+            cell = self._tiles_panel.captured_tile(
+                self._field, self._field.get_position_by_mouse_pos(pygame.mouse.get_pos())
+            )
             # make a copy of a real tile converting it into a button, so we can easily detect RMB press
             fake_tile = Button(*cell.get_rect(), parent=cell.parent)
             fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile), button='R')
@@ -111,7 +133,7 @@ class Editor(BaseWindow):
             fake_tile.set_hovered_view(cell.image)
             fake_tile.set_not_hovered_view(cell.image)
             # save the factory in the .tile attribute to access it on field save
-            fake_tile.tile = self._captured_tile
+            fake_tile.tile = self._tiles_panel.captured_tile
             for r in self._buttoned_cells:
                 # if there is any tile on position of the new tile, old one will be removed
                 if fake_tile.get_rect().colliderect(r.get_rect()):

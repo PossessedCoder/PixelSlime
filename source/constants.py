@@ -13,18 +13,18 @@ SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = (pygame.display.Info().current_w, py
 
 
 class UserEvents:
-    # opening of a new window, must have attr "window"
-    SET_CWW = pygame.USEREVENT + 1
-    # closing of a current working window (remove value from windows stack)
-    CLOSE_CWW = pygame.USEREVENT + 2
-    # tile placed on tiles panel of the editor has been captured by user
-    TILE_CAPTURED = pygame.USEREVENT + 3
+    # pygame has limitations on events num: maximum of 9 events is only available (ids from 24 to 32),
+    # so this class should contain only vital attributes
+    SET_CWW = pygame.USEREVENT + 0
+    CLOSE_CWW = pygame.USEREVENT + 1
 
 
 class Images:
     # buttons
+    RUN = 'run.png'
     FORWARD = 'forward.png'
     BACK = 'back.png'
+    TRASH_BIN = 'trash_bin.png'
     CLOSE_WINDOW = 'close_window.png'
 
     # tiles (and their dependencies)

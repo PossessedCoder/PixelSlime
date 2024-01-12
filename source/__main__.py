@@ -26,19 +26,19 @@ class Main:
                 sys.exit()  # terminates executing if pygame.quit() in run() didn't do it
 
     def _mainloop(self):
-        self._eventloop()
+        while True:
+            self._eventloop()
 
-        current_working_window = self._windows_stack[-1]
-        self._screen.blit(current_working_window, current_working_window.get_rect())
-        current_working_window.handle()
+            current_working_window = self._windows_stack[-1]
+            self._screen.blit(current_working_window, current_working_window.get_rect())
+            current_working_window.handle()
+
+            pygame.display.flip()
+            self._clock.tick(FPS)
 
     def run(self):
         try:
-            while True:
-                self._mainloop()
-
-                pygame.display.flip()
-                self._clock.tick(FPS)
+            self._mainloop()
         finally:
             pygame.quit()  # clear pygame stuff; make sure every running file will be closed correctly
 
