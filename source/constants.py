@@ -9,7 +9,7 @@ DB_URL = os.path.join(BASE_DIR, 'db.sqlite3')
 
 FPS = 60
 # 1920x1080 recommended
-SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = (1920, 1080)
 
 
 class UserEvents:
