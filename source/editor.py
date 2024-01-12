@@ -1,120 +1,82 @@
 import pygame
 
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_SIZE
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_SIZE, UserEvents, Images
 from game import Field
-from templates import BaseWindow, Panel, _SupportsHover
-from tiles import Hero
-from utils import load_image, get_tiles
+from templates import Button, BaseWindow, LowerPanel
+from utils import load_image, get_tiles, post_event, catch_events
 
 
-class TilesPanel(Panel):
+class TilesPanel(LowerPanel):
 
     def __init__(self, minimized_rect, maximized_rect, resize_time, parent=None):
         super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
 
-        self._buttons = []
-        self._content = None
-        self._additional = None
+        buttons_not_hovered_view = {'scale_x': 1, 'scale_y': 1, 'border_radius': 14}
+        buttons_hovered_view = {'scale_x': 1.05, 'scale_y': 1.05, 'border_radius': 11}
+        buttons_data = (
+            (Images.RUN, (lambda: None,)),
+            # actually bad practice to use setattr for parent's private attributes, but cannot use events everywhere,
+            # because pygame has limitations on user events number: maximum 9 (with ids from 24 to 32)
+            (Images.TRASH_BIN, (lambda: setattr(self.parent, '_buttoned_cells', list()),)),
+            (Images.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),))
+        )
 
-        # TODO: remove code below. Test of buttons
-        btn = _SupportsHover(35, 35, 45, 45, parent=self)
-        btn.set_not_hovered_view(load_image('back.png'), border_radius=14)
-        btn.set_hovered_view(load_image('back.png'), 1.05, 1.05, border_radius=11)
-        self._buttons.append(btn)
-        btn = _SupportsHover(100, 35, 45, 45, parent=self)
-        btn.set_not_hovered_view(load_image('forward.png'), border_radius=14)
-        btn.set_hovered_view(load_image('forward.png'), 1.05, 1.05, border_radius=11)
-        self._buttons.append(btn)
-        btn = _SupportsHover(35, 100, 45, 45, parent=self)
-        btn.set_not_hovered_view(load_image('close_window.png'), border_radius=14)
-        btn.set_hovered_view(load_image('close_window.png'), 1.05, 1.05, border_radius=11)
-        self._buttons.append(btn)
+        for image_name, callbacks in buttons_data:
+            btn = Button(-1, -1, 50, 50, parent=self)
+            buttons_hovered_view['content'] = load_image(image_name)
+            buttons_not_hovered_view['content'] = load_image(image_name)
+            btn.set_hovered_view(**buttons_hovered_view)
+            btn.set_not_hovered_view(**buttons_not_hovered_view)
+            btn.bind_press(*callbacks)
+            self.add_button(btn)
+
+        self._captured_tile = None
+        self._available_tiles = []
+        self._get_available_tiles()
+
+    @property
+    def captured_tile(self):
+        return self._captured_tile
+
+    # CHECKME: conceptual method, should be changed when db API will be ready
+    def _get_available_tiles(self):
+        tls = get_tiles()
+
+        def _tile_preview_onclick(button, factory):
+            self._captured_tile = factory
+            button.captured = True
+            button.emit_hover(state=True)
+
+            for button_it in self._available_tiles:
+                if hasattr(button_it, 'captured') and button_it != button:
+                    del button_it.captured
+                    button_it.remove_hover()
+
+        x, y = 10 + SCREEN_WIDTH // 5, 35
+        for tile in tls.values():
+            img = pygame.transform.scale(load_image(tile.IMAGE_NAME), (100, 100))
+            btn = Button(x, y, 48, 48, parent=self)
+            btn.set_not_hovered_view(img)
+            btn.set_hovered_view(img, 1.09, 1.09)
+            btn.bind_press((lambda *args: lambda: _tile_preview_onclick(*args))(btn, tile))
+            self._available_tiles.append(btn)
+            x += 65
+            if x + btn.get_rect().w > self.get_rect().w:
+                y += 65
+                x = 10 + SCREEN_WIDTH // 5
 
     def draw(self):
-        self.fill((40, 43, 48))
         super().draw()
 
         if self.is_minimized():
             return
 
-        for button in self._buttons:
-            button.draw()
-            self.blit(button, rect=pygame.Rect(self.get_rect().w - self.get_width() + button.get_rect().x,
-                                               self.get_rect().h - self.get_height() + button.get_rect().y,
-                                               *button.get_rect().size))
-
-
-class NotificationsPanel(Panel):
-
-    def __init__(self, minimized_rect, maximized_rect, resize_time, parent=None):
-        super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
-
-        self._text_surface = pygame.Surface(self._maximized_rect.size, pygame.SRCALPHA)
-        self._queue = []
-
-        self._current_notification = (pygame.Surface((0, 0)), pygame.Surface((0, 0)), pygame.Surface((0, 0)))
-
-        # TODO: remove code below. Test of notifications and get_tiles() method
-        for tile in get_tiles().values():
-            self.add_notification('Вы открыли новый тайл', 'Доступен в редакторе уровней', load_image(tile.IMAGE_NAME))
-
-    @property
-    def current_title(self):
-        return self._current_notification[0]
-
-    @property
-    def current_text(self):
-        return self._current_notification[1]
-
-    @property
-    def current_image(self):
-        return self._current_notification[2]
-
-    def add_notification(self, title=..., text=..., image=...):
-        title = pygame.font.SysFont('serif', 18).render(title if isinstance(title, str) else '', True, (0, 0, 0))
-        text = pygame.font.SysFont(
-            'arial', 11, italic=True).render(text if isinstance(text, str) else '', True, (69, 69, 69))
-        image = pygame.transform.scale(image.copy(), (self.get_height() // 2, self.get_height() // 2))\
-            if isinstance(image, pygame.Surface) else pygame.Surface((0, 0))
-        self._queue.append((title, text, image))
-
-    def draw(self):
-        if self.is_minimized():
-            try:
-                self._current_notification = next(self)
-                self.maximize(duration=3)
-            except StopIteration:
-                return
-
-        super().draw()
-
-        self.fill((204, 191, 190))
-        self._text_surface.fill((255, 255, 255, 0))
-
-        self._text_surface.blit(
-            self.current_title,
-            ((self._text_surface.get_width() - self.current_title.get_width() + self.current_image.get_width()) // 2,
-             (self._text_surface.get_height() - self.current_title.get_height() - self.current_text.get_height()) // 2)
-        )
-        self._text_surface.blit(
-            self.current_text,
-            ((self._text_surface.get_width() - self.current_text.get_width() + self.current_image.get_width()) // 2,
-             (self._text_surface.get_height() - self.current_text.get_height() + self.current_title.get_height()) // 2)
-        )
-        self._text_surface.blit(
-            self.current_image,
-            (self.current_image.get_width() // 4, self.current_image.get_height() // 2)
-        )
-        self.blit(
-            self._text_surface,
-            pygame.Rect(self.get_rect().w - self.get_width(), self.get_rect().h - self.get_height(), *self.get_size())
-        )
-
-    def __next__(self):
-        try:
-            return self._queue.pop(0)
-        except IndexError:
-            raise StopIteration('Notifications queue is empty') from None
+        for tile in self._available_tiles:
+            tile.handle()
+            self.blit(tile)
+            if hasattr(tile, 'captured'):
+                # cannot use properties of _SupportsBorder on Button class since they are refreshed in _draw method
+                pygame.draw.rect(self, (42, 199, 186), tile.get_rect(), width=3)
 
 
 class Editor(BaseWindow):
@@ -129,12 +91,12 @@ class Editor(BaseWindow):
             parent=self
         )
 
-        self._notifications = NotificationsPanel(
-            (SCREEN_WIDTH, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
-            (SCREEN_WIDTH // 6 * 5, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
-            resize_time=0.5,
-            parent=self
-        )
+        # self._notifications = NotificationsPanel(
+        #     (SCREEN_WIDTH, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
+        #     (SCREEN_WIDTH // 6 * 5, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
+        #     resize_time=0.5,
+        #     parent=self
+        # )
 
         y = 15
         w = h = SCREEN_HEIGHT - y * 2 - (SCREEN_HEIGHT - self._tiles_panel.get_rect().y)
@@ -142,21 +104,78 @@ class Editor(BaseWindow):
 
         self._field = Field(x, y, w, h, parent=self)
 
-        self._field.rows, self._field.cols = 20, 20
+        self._field.rows, self._field.cols = 15, 15
         self._field.grid = (255, 255, 255)
 
-        # TODO: TODO: remove code below. Test of hero
+        self._buttoned_cells = []
+        self._field_updater = self._get_field_updater()
+
+        from tiles import Hero
         hero = Hero(self._field, (5, 5))
         self._field.add_cells(hero)
 
     def eventloop(self):
-        ...
+        for event in catch_events(False):
+            # LMB pressed and colliding field and not colliding tiles panel and any tile captured
+            if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
+                continue
+            if not self._field.is_colliding_field(pygame.mouse.get_pos(), border=False):
+                continue
+            if self._tiles_panel.get_rect().collidepoint(*pygame.mouse.get_pos()):
+                continue
+            if not self._tiles_panel.captured_tile:
+                continue
+
+            # init real cell
+            cell = self._tiles_panel.captured_tile(
+                self._field, self._field.get_position_by_mouse_pos(pygame.mouse.get_pos())
+            )
+            # make a copy of a real tile converting it into a button, so we can easily detect RMB press
+            fake_tile = Button(*cell.get_rect(), parent=cell.parent)
+            fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile), button='R')
+            # setting view of a button (same in both hovered and not hovered)
+            fake_tile.set_hovered_view(cell.image)
+            fake_tile.set_not_hovered_view(cell.image)
+            # save the factory in the .tile attribute to access it on field save
+            fake_tile.tile = self._tiles_panel.captured_tile
+            for r in self._buttoned_cells:
+                # if there is any tile on position of the new tile, old one will be removed
+                if fake_tile.get_rect().colliderect(r.get_rect()):
+                    self._buttoned_cells.remove(r)
+                    break
+            self._buttoned_cells.append(fake_tile)
+
+    def _get_field_updater(self):
+        # Since no actions happen on the field in the editor mode, there is no need to draw it every frame,
+        # and we can only update it on addition/deletion of a new fake tile
+
+        self._field.handle()  # draw grid
+        previous_buttoned_cells = self._buttoned_cells.copy()
+
+        def _updater():
+            nonlocal previous_buttoned_cells
+
+            if self._buttoned_cells != previous_buttoned_cells:  # skip drawing if there is no changes
+                self._field.handle()
+                for ft in self._buttoned_cells:
+                    ft.draw()
+                    self._field.blit(ft)
+
+            previous_buttoned_cells = self._buttoned_cells.copy()
+
+            for ft in self._buttoned_cells:  # force events handling even if field is not updated
+                ft.eventloop()
+
+            self.blit(self._field)
+
+        return _updater
 
     def draw(self):
         self.fill((54, 57, 62))
-        self._field.draw()
-        self._tiles_panel.draw()
-        self._notifications.draw()
-        self.blit(self._field)
+
+        self._field_updater()
+        self._field.handle()
+
+        # if there are FPS issues, optimize the code below with lazy callees only on update (change of the rect)
+        self._tiles_panel.handle()
         self.blit(self._tiles_panel)
-        self.blit(self._notifications)
