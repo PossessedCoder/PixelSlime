@@ -46,7 +46,7 @@ class Hero(Cell):
     def __init__(self, field, coordinates, *groups, arrowed=True):
         super().__init__(field, coordinates, *groups)
         self._arrowed = arrowed
-        self.speed = 3
+        self.speed = 10
         if self._arrowed:
             # will be moved in update (_get_arrow_vector_rect() relies on ArrowVector size)
             self._arrow_vector = self._ArrowVector(-1, -1, *self.get_size(), parent=field)
@@ -60,7 +60,7 @@ class Hero(Cell):
             angle = self._arrow_vector.angle % 360
             print((abs(math.cos(math.radians(angle))) if angle > 90 else -abs(math.cos(math.radians(angle)))),
                       -abs(math.sin(math.radians(angle))))
-            self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90 else -abs(math.sin(math.radians(angle)))) * self.speed,
+            self.move(self.get_rect().x + ((abs(math.sin(math.radians(angle))) if angle > 90 else -abs(math.sin(math.radians(angle)))) * self.speed),
                       self.get_rect().y + -abs(math.cos(math.radians(angle))) * self.speed)
 
     def _get_arrow_vector_rect(self):
