@@ -9,7 +9,7 @@ DB_URL = os.path.join(BASE_DIR, 'db.sqlite3')
 
 FPS = 60
 # 1920x1080 recommended
-SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = (1920, 1080)
 
 
 class UserEvents:
@@ -17,6 +17,8 @@ class UserEvents:
     # so this class should contain only vital attributes
     SET_CWW = pygame.USEREVENT + 0
     CLOSE_CWW = pygame.USEREVENT + 1
+    FREEZE_CWW = pygame.USEREVENT + 2
+    UNFREEZE_CWW = pygame.USEREVENT + 3
 
 
 class Images:
@@ -26,6 +28,9 @@ class Images:
     BACK = 'back.png'
     TRASH_BIN = 'trash_bin.png'
     CLOSE_WINDOW = 'close_window.png'
+    EYE = 'eye.png'
+    LEVELS_PREVIEW = 'levels_preview.png'
+    WRENCH = 'wrench.png'
 
     # tiles (and their dependencies)
     HERO = 'hero.png'
