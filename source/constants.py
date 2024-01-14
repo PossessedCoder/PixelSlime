@@ -15,10 +15,11 @@ SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = (1920, 1080)
 class UserEvents:
     # pygame has limitations on events num: maximum of 9 events is only available (ids from 24 to 32),
     # so this class should contain only vital attributes
-    SET_CWW = pygame.USEREVENT + 0
-    CLOSE_CWW = pygame.USEREVENT + 1
-    FREEZE_CWW = pygame.USEREVENT + 2
-    UNFREEZE_CWW = pygame.USEREVENT + 3
+    SET_CWW = pygame.USEREVENT + 0  # attrs: window
+    CLOSE_CWW = pygame.USEREVENT + 1  # attrs: window
+    FREEZE_CWW = pygame.USEREVENT + 2  # attrs: freezer
+    UNFREEZE_CWW = pygame.USEREVENT + 3  # attrs: freezer
+    START_SESSION = pygame.USEREVENT + 4  # attrs: uid
 
 
 class Images:

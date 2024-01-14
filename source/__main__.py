@@ -13,6 +13,8 @@ class Main:
         self._screen = pygame.display.set_mode(SCREEN_SIZE, pygame.FULLSCREEN)
         self._clock = pygame.time.Clock()
 
+        self._session = 0
+
         self._windows_stack = [Menu()]
         self._freezers = []
 
@@ -28,6 +30,8 @@ class Main:
                 self._freezers.append(event.freezer)
             if event.type == UserEvents.UNFREEZE_CWW:
                 self._freezers.remove(event.freezer)
+            if event.type == UserEvents.START_SESSION:
+                self._session = event.uid
 
     def _mainloop(self):
         while True:
