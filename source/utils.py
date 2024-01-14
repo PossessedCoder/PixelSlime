@@ -3,9 +3,11 @@ import os
 import sqlite3
 from functools import cache, wraps
 
+import bcrypt
 import pygame
 
 from constants import MEDIA_URL, DB_URL
+from exceptions import UserAlreadyExistsError
 
 
 class _MediaFramesIterator:
@@ -90,6 +92,7 @@ def catch_events(_update_queue=True):
 
 
 class DataBase:
+    USERS_TABLE = 'users'
 
     def __init__(self):
         with sqlite3.connect(DB_URL) as connection:
@@ -97,3 +100,26 @@ class DataBase:
 
     def _commit(self):
         self._cursor.connection.commit()
+
+    def get_user(self, uid):
+        return self._cursor.execute(f'''SELECT * FROM {self.USERS_TABLE} WHERE uid = ?''', (uid,)).fetchone()
+
+    def create_user(self, login, password):
+        if self.get_uid(login):
+            raise UserAlreadyExistsError(f'Login "{login}" is already taken')
+
+        password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+        self._cursor.execute(
+            f'INSERT INTO {self.USERS_TABLE} (login, password) VALUES (?, ?)',
+            (login, password)
+        )
+        self._commit()
+
+    def get_uid(self, login):
+        fetched = self._cursor.execute(f'''SELECT uid FROM {self.USERS_TABLE} WHERE login = ?''', (login,)).fetchone()
+        return fetched[0] if fetched else None
+
+    def is_correct_password(self, uid, password):
+        saved_hashed = self.get_user(uid)[2]
+        return bcrypt.checkpw(password.encode('utf-8'), saved_hashed)
