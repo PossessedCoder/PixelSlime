@@ -10,6 +10,7 @@ from utils import load_media, catch_events
 
 class Hero(Cell):
     IMAGE_NAME = Images.HERO
+    USAGE_LIMIT = 1
 
     class _ArrowVector(BaseSurface):  # Do not inherit from cell. Field.add_cells() will cause issues
         IMAGE_NAME = Images.ARROW_VECTOR

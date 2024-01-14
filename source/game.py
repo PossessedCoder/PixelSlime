@@ -201,6 +201,7 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
     # It can be separately loaded outside of Cell's child __init__ method.
     # If you need to access real image used by subclass, use the image property
     IMAGE_NAME = None
+    USAGE_LIMIT = None
 
     def __init__(self, field, coordinates, *groups):
         self._field = field
