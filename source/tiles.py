@@ -1,9 +1,11 @@
+import math
+
 import pygame
 
 from constants import Images
-from templates import BaseSurface
 from game import Cell
-from utils import load_media
+from templates import BaseSurface
+from utils import load_media, catch_events
 
 
 class Hero(Cell):
@@ -18,6 +20,8 @@ class Hero(Cell):
             self._angle = 0
             self._original_image = pygame.transform.scale(load_media(self.IMAGE_NAME), (w, h))
             self._image = self._original_image.copy()
+            self.d_angle = -1
+            self.fly = False
 
         @property
         def image(self):
@@ -28,7 +32,11 @@ class Hero(Cell):
             return self._angle
 
         def rotate(self, angle):
-            self._angle = (self._angle + angle) % 360  # Value will repeat after 359. This prevents angle to overflow.
+            if self.fly:
+                return
+            if self.angle == 90 or self.angle == 270:
+                self.d_angle *= -1
+            self._angle = (self.angle + angle * self.d_angle) % 360
             self._image = pygame.transform.rotate(self._original_image, self._angle)
 
         def draw(self):
@@ -37,11 +45,23 @@ class Hero(Cell):
 
     def __init__(self, field, coordinates, *groups, arrowed=True):
         super().__init__(field, coordinates, *groups)
-        self._arrowed = arrowed
 
+        self._arrowed = arrowed
+        self.speed = 3
         if self._arrowed:
             # will be moved in update (_get_arrow_vector_rect() relies on ArrowVector size)
             self._arrow_vector = self._ArrowVector(-1, -1, *self.get_size(), parent=field)
+
+    def eventloop(self):
+        for e in catch_events(False):
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_SPACE:
+                    self._arrow_vector.fly = True
+        if self._arrow_vector.fly:
+            angle = self._arrow_vector.angle % 360
+            self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90
+                                           else -abs(math.sin(math.radians(angle)))) * self.speed,
+                      self.get_rect().y + -abs(math.cos(math.radians(angle))) * self.speed)
 
     def _get_arrow_vector_rect(self):
         return pygame.Rect(
@@ -56,6 +76,7 @@ class Hero(Cell):
         self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
         if self._arrowed:
             self._arrow_vector.rotate(1.5)
+            print(self._arrow_vector.angle)
 
     def handle(self):
         super().handle()
