@@ -5,7 +5,7 @@ import pygame
 from constants import Images
 from game import Cell
 from templates import BaseSurface
-from utils import load_image, catch_events
+from utils import load_media, catch_events
 
 
 class Hero(Cell):
@@ -18,7 +18,7 @@ class Hero(Cell):
             super().__init__(x, y, w, h, parent=parent)
 
             self._angle = 0
-            self._original_image = pygame.transform.scale(load_image(self.IMAGE_NAME), (w, h))
+            self._original_image = pygame.transform.scale(load_media(self.IMAGE_NAME), (w, h))
             self._image = self._original_image.copy()
             self.d_angle = -1
             self.fly = False

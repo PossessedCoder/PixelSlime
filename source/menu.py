@@ -2,6 +2,7 @@ from constants import Images
 from editor import Editor
 from templates import BaseWindow, Button, BaseSurface, Form, FormField
 from utils import load_media
+from levels import Levels
 
 
 class Menu(BaseWindow):
@@ -67,6 +68,7 @@ class Menu(BaseWindow):
         self._button_editor.set_not_hovered_view(load_media(Images.WRENCH), background_color=(78, 78, 78),
                                                  border_radius=25)
         self._button_editor.bind_press(lambda: Editor())
+        self._button_levels.bind_press(lambda: Levels())
 
     def eventloop(self):
         self._button_editor.eventloop()
