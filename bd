@@ -1,0 +1,21 @@
+import sqlite3
+
+conn = sqlite3.connect('game.db')
+cursor = conn.cursor()
+
+cursor.execute('''CREATE TABLE IF NOT EXISTS users
+                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   username TEXT UNIQUE NOT NULL,
+                   password TEXT NOT NULL,
+                   score INTEGER NOT NULL)''')
+
+sample_users = [('player1', 'password1', 100),
+                ('player2', 'password2', 200),
+                ('player3', 'password3', 300)]
+
+for user in sample_users:
+    cursor.execute("INSERT INTO users (username, password, score) VALUES (?, ?, ?)", user)
+
+conn.commit()
+
+conn.close()
