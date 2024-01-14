@@ -1,3 +1,4 @@
+import itertools
 import os
 import sqlite3
 from functools import cache, wraps
@@ -7,9 +8,39 @@ import pygame
 from constants import MEDIA_URL, DB_URL
 
 
-@cache  # if there are memory issues, use functools.lru_cache(maxsize={max_memory_usage_integer})
-def load_image(image_name):
-    return pygame.image.load(os.path.join(MEDIA_URL, image_name)).convert_alpha()
+class _MediaFramesIterator:
+
+    def __init__(self, filename, repeat=False):
+        abs_path = os.path.join(MEDIA_URL, filename)
+
+        if not os.path.isdir(abs_path):  # file (not directory)
+            self.__iterator = itertools.cycle((self._load_frame(filename),))  # repeats one frame (only existing)
+            return
+
+        lr = os.listdir(abs_path)
+        if repeat:
+            # repeats whole sequence of the frames
+            self.__iterator = itertools.cycle((self._load_frame(os.path.join(filename, file)) for file in lr))
+        else:
+            # iterates all frames once and then repeats last frame (as single image)
+            self.__iterator = itertools.chain((self._load_frame(os.path.join(filename, file)) for file in lr),
+                                              itertools.cycle((self._load_frame(os.path.join(filename, lr[-1])),)))
+
+    @cache  # if there are memory issues, use functools.lru_cache(maxsize={max_memory_usage_integer})
+    def _load_frame(self, rel):
+        return pygame.image.load(os.path.join(MEDIA_URL, rel)).convert_alpha()
+
+    def __iter__(self):
+        return self.__iterator
+
+    def __next__(self):
+        return next(self.__iterator)
+
+
+# repeats last frame if repeat=False. Otherwise, repeats all frames
+def load_media(filename, repeat=False):
+    iterator = _MediaFramesIterator(filename, repeat=repeat)
+    return iterator if os.path.isdir(os.path.join(MEDIA_URL, filename)) else next(iterator)
 
 
 def post_event(event_or_code, **params):

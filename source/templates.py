@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pygame
 
-from constants import FPS, UserEvents
+from constants import FPS, UserEvents, SCREEN_SIZE
 from utils import catch_events, post_event
 
 
@@ -103,11 +103,19 @@ class BaseSurface(pygame.Surface):
 
         super().blit(source, rect, **kwargs)
 
+    # can be ignored on "del obj", use "obj.__del__()" instead
+    def __del__(self):
+        try:
+            self.resize(0, 0)
+        except AttributeError:
+            return
+        self.__getattribute__ = lambda: (_ for _ in ()).throw(AttributeError, 'This object has been deleted')
+
 
 class BaseWindow(BaseSurface):
 
-    def __init__(self, x, y, w, h):
-        super().__init__(x, y, w, h)
+    def __init__(self):
+        super().__init__(0, 0, *SCREEN_SIZE)
         post_event(UserEvents.SET_CWW, window=self)
 
 
@@ -166,12 +174,11 @@ class _SupportsHover(_SupportsBorder):
             'border_color': None,
             'border_width': 0,
             'border_radius': 0,
-            'cursor': pygame.SYSTEM_CURSOR_ARROW
+            'background_color': None
         }
 
         self._hover_data = self._default_data.copy()
         self._no_hover_data = self._default_data.copy()
-        self._no_hover_data.pop('cursor')
 
         self._hover_emit_state = None
 
@@ -221,10 +228,10 @@ class _SupportsHover(_SupportsBorder):
             border_radius=0,
             border_color=None,
             border_width=0,
-            cursor=pygame.SYSTEM_CURSOR_ARROW
+            background_color=None
     ):
         self._set_view(self._hover_data, content.copy(), scale_x,
-                       scale_y, border_color, border_width, border_radius, cursor)
+                       scale_y, border_color, border_width, border_radius, background_color)
 
     def set_not_hovered_view(
             self,
@@ -233,12 +240,14 @@ class _SupportsHover(_SupportsBorder):
             scale_y=1.0,
             border_color=None,
             border_width=0,
-            border_radius=0
+            border_radius=0,
+            background_color=None
     ):
-        self._set_view(self._no_hover_data, content.copy(), scale_x, scale_y, border_color, border_width, border_radius)
+        self._set_view(self._no_hover_data, content.copy(), scale_x, scale_y,
+                       border_color, border_width, border_radius, background_color)
 
-    def _draw(self, content, scale_x, scale_y, border_color, border_width, border_radius):
-        self.fill((255, 255, 255, 0))
+    def _draw(self, content, scale_x, scale_y, border_color, border_width, border_radius, background_color):
+        self.fill((255, 255, 255, 0) if not background_color else background_color)
         self.resize(self.get_width() * scale_x, self.get_height() * scale_y)
 
         # draw on an initial surface (pygame.Surface) and then resize in BaseSurface blit() method
@@ -253,13 +262,7 @@ class _SupportsHover(_SupportsBorder):
         super().draw()
 
     def draw(self):
-        if self.hovered:
-            draw_data = self._hover_data.copy()
-            pygame.mouse.set_cursor(pygame.cursors.Cursor(draw_data.pop('cursor')))  # CHECKME: bugged
-        else:
-            draw_data = self._no_hover_data.copy()
-
-        self._draw(**draw_data)
+        self._draw(**(self._hover_data if self.hovered else self._no_hover_data).copy())
 
 
 class Button(_SupportsHover):
@@ -376,9 +379,7 @@ class Panel(BaseSurface):
     def _is_active(self):
         return self.get_absolute_rect().collidepoint(*pygame.mouse.get_pos()) or self._show_till > datetime.now()
 
-    def handle(self):
-        super().handle()
-
+    def eventloop(self):
         if self._is_active() and not self.is_maximized():
             additions = self._additions
         elif not (self._is_active() or self.is_minimized()):
@@ -539,10 +540,11 @@ class LineEdit(_SupportsBorder):
             font=...,
             border_color=pygame.Color(115, 169, 222),
             border_width=2,
-            border_radius=0
+            border_radius=0,
+            background_color=pygame.Color(255, 255, 255)
     ):
         self._set_view(self._focused_data, text_color, placeholder_color, font,
-                       border_color, border_width, border_radius)
+                       border_color, border_width, border_radius, background_color)
 
     def set_unfocused_view(
             self,
@@ -551,12 +553,13 @@ class LineEdit(_SupportsBorder):
             font=...,
             border_color=pygame.Color(69, 69, 69),
             border_width=1,
-            border_radius=0
+            border_radius=0,
+            background_color=pygame.Color(255, 255, 255)
     ):
         self._set_view(self._unfocused_data, text_color, placeholder_color, font,
-                       border_color, border_width, border_radius)
+                       border_color, border_width, border_radius, background_color)
 
-    def _get_font(self):
+    def get_font(self):
         font = (self._focused_data if self.focused else self._unfocused_data).get('font')
 
         if font != Ellipsis:
@@ -569,8 +572,8 @@ class LineEdit(_SupportsBorder):
         rendered = font.render(text, True, text_color)
         y = self.get_rect().h // 2 - rendered.get_rect().h // 2
         margin_left = border_radius // 2 + border_width + 3
-        if self.get_rect().w < rendered.get_rect().w:
-            self.blit(rendered, rect=(self.get_rect().w - rendered.get_width() + margin_left, y, *rendered.get_size()))
+        if self.get_rect().w < rendered.get_rect().w + margin_left * 2:
+            self.blit(rendered, rect=(self.get_rect().w - rendered.get_width() - margin_left, y, *rendered.get_size()))
         else:
             self.blit(rendered, rect=(margin_left, y, *rendered.get_rect().size))
 
@@ -593,15 +596,21 @@ class LineEdit(_SupportsBorder):
             draw_data.update(text=self.placeholder_text, text_color=pc)
         else:
             draw_data.update(text='', text_color=tc)
-        draw_data.update(font=self._get_font())
+        draw_data.update(font=self.get_font())
 
         self._draw(**draw_data)
 
     def eventloop(self):
         pressed = pygame.key.get_pressed()
-        if datetime.now() > self._bs_next_unlock and (pressed[pygame.K_RETURN] or pressed[pygame.K_BACKSPACE]):
+
+        if self.focused and (self._bs_next_unlock is None or datetime.now() > self._bs_next_unlock) \
+                and (pressed[pygame.K_RETURN] or pressed[pygame.K_BACKSPACE]):
             self.text = self.text[:-1]
-            self._bs_next_unlock = datetime.now() + timedelta(milliseconds=40)  # removing 1char/40ms maximum
+            delta = 40 if self._bs_next_unlock else 250
+            self._bs_next_unlock = datetime.now() + timedelta(milliseconds=delta)
+
+        if not (pressed[pygame.K_RETURN] or pressed[pygame.K_BACKSPACE]):
+            self._bs_next_unlock = None
 
         for event in catch_events(False):
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -612,45 +621,254 @@ class LineEdit(_SupportsBorder):
 
 class FormField(LineEdit):
 
-    def __init__(self, x, y, w, h, parent=None):
-        super().__init__(x, y, w, h, parent=parent)
+    def __init__(self, w, h, secret=False, parent=None):
+        # Will be moved and resized by form, but since resize is fake, size params must be greater than zero
+        super().__init__(-1, -1, w, h, parent=parent)
+        self._secret = secret
+        self._secret_view = None
+        self._secret_state = True
+        self._secret_button = None
 
         self._errors = ()
-        self._errors_surface = BaseSurface(0, 0, 0, 0, parent=self)
+        self._label = None
+
+    @property
+    def secret(self):
+        return self._secret
+
+    @property
+    def secret_button(self):
+        if self._secret is False:
+            return
+
+        return self._secret_button
+
+    @secret_button.setter
+    def secret_button(self, value):
+        if self._secret is False:
+            raise ValueError('Cannot set secret button for field which is not secret (.__init__(secret=False))')
+
+        self._secret_button = value
+
+    @property
+    def secret_state(self):
+        if self._secret is False:
+            return
+
+        return self._secret_state
+
+    @secret_state.setter
+    def secret_state(self, value):
+        if self._secret is False:
+            raise ValueError('Cannot set secret state for field which is not secret (.__init__(secret=False))')
+
+        self._secret_state = value
+
+    @property
+    def secret_view(self):
+        if self._secret is False:
+            return
+
+        return self._secret_view
+
+    @secret_view.setter
+    def secret_view(self, value):
+        if self._secret is False:
+            raise ValueError('Cannot set secret view for field which is not secret (.__init__(secret=False))')
+
+        size = self.get_rect().h
+        self._secret_view = pygame.transform.scale(value, (size, size))
+
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, value):
+        self._label = value
 
     @property
     def errors(self):
         return self._errors
 
     @errors.setter
-    def errors(self, e):  # e: Iterable[str]
-        self._errors = tuple(e)
+    def errors(self, values_iterable):
+        self._errors = tuple(values_iterable)
+
+    def draw(self):
+        if self.secret_state is True:
+            real_text = self.text
+            self.text = '•' * len(real_text)
+            super().draw()
+            self.text = real_text
+        else:
+            super().draw()
 
 
-class Form(BaseSurface):
+class _Freezer:
+
+    def freeze(self):
+        post_event(UserEvents.FREEZE_CWW, freezer=self)
+
+    def unfreeze(self):
+        post_event(UserEvents.UNFREEZE_CWW, freezer=self)
+
+
+class Form(_SupportsBorder, _Freezer):
 
     def __init__(self, x, y, w, h, parent=None):
         super().__init__(x, y, w, h, parent=parent)
 
+        self._title = ''
+        self._title_color = pygame.Color(255, 255, 255)
+
         self._fields = []
+        self.__secret_buttons = []
+        self._submit_button = ...
+
+        self._margin_inline = 10
+        self._margin_block = ...
+
+        self._errors_color = pygame.Color(255, 0, 0)
+
+        self.freeze()
+
+    @property
+    def submit_button(self):
+        if self._submit_button != Ellipsis:
+            return self._submit_button
+
+    @submit_button.setter
+    def submit_button(self, value):
+        value.bind_press(lambda: self.on_success() if self.validate() is True else None,
+                         *value.get_press_callbacks(button='L'))
+        self._submit_button = value
+
+    @property
+    def contents_margin_inline(self):
+        return self._margin_inline
+
+    @contents_margin_inline.setter
+    def contents_margin_inline(self, value):
+        self._margin_inline = value
+
+    @property
+    def contents_margin_block(self):
+        if self._margin_block != Ellipsis:
+            return self._margin_block
+
+        return self._get_avg_fields_font_size()
+
+    @contents_margin_block.setter
+    def contents_margin_block(self, value):
+        self._margin_block = value
+
+    @property
+    def title(self):
+        return self._title
+
+    @title.setter
+    def title(self, value):
+        self._title = value
+
+    @property
+    def title_color(self):
+        return self._title_color
+
+    @title_color.setter
+    def title_color(self, value):
+        self._title_color = pygame.Color(*value)
+
+    @property
+    def background_color(self):
+        return self.get_background_color()
+
+    # define background_color once and then use it on every draw() call as fill() param
+    @background_color.setter
+    def background_color(self, value):
+        self._background = pygame.Color(*value)
+
+    @property
+    def errors_color(self):
+        return self._errors_color
+
+    @errors_color.setter
+    def errors_color(self, value):
+        self._errors_color = pygame.Color(*value)
 
     @property
     def fields(self):
         return self._fields.copy()
 
-    def as_tuple(self, *apply_callables):
-        data = []
+    def as_tuple(self):
+        return tuple(field.text for field in self._fields)
 
-        for field in self._fields:
-            t = field.text
-            for maybe_applyable in apply_callables:
-                t = maybe_applyable(t)
-            data.append(t)
-
-        return tuple(data)
-
-    def is_valid(self):
+    def validate(self):  # errors should be added here. returns bool
         return True
 
-    def add_field(self, line_edit):
-        self._fields.append(line_edit)
+    def on_success(self):  # request db for saving data (can be accessed with as_tuple()), close form etc
+        self.__del__()
+        self.unfreeze()
+
+    def add_field(self, field):
+        self._fields.append(field)
+
+    def _get_avg_fields_font_size(self):
+        return round(sum(field.get_font().get_height() for field in self._fields) / len(self._fields))
+
+    def draw(self):
+        self.fill(self.background_color)
+        super().draw()
+
+        y = self.contents_margin_block
+
+        if self._title:
+            ttl = pygame.font.SysFont(
+                'arial', self._get_avg_fields_font_size() // 3 * 4
+            ).render(self._title, True, self._title_color)
+            self.blit(ttl, rect=((self.get_rect().w - ttl.get_rect().w) // 2, self.contents_margin_block,
+                                 *ttl.get_size()))
+
+            y += ttl.get_height() + self.contents_margin_block
+
+        for field in self.fields:
+            font = field.get_font()
+
+            if field.label:
+                font.bold = True
+                field_label = font.render(field.label, True, (255, 255, 255))
+                self.blit(field_label, rect=(field.get_rect().x, y, *field_label.get_size()))
+                y += field_label.get_height() + 5
+            font.bold = False
+
+            field.move(self.contents_margin_inline, y)
+            field.handle()
+            self.blit(field)
+            y += field.get_rect().h
+
+            if field.secret and not field.secret_button:
+                secret_btn = Button(self.get_rect().w - self.contents_margin_inline - field.secret_view.get_rect().w, y,
+                                    *field.secret_view.get_size(), parent=self)
+                secret_btn.set_hovered_view(field.secret_view)
+                secret_btn.set_not_hovered_view(field.secret_view)
+                secret_btn.bind_press((lambda f: lambda: setattr(f, 'secret_state', not f.secret_state))(field))
+                field.secret_button = secret_btn
+
+            if field.secret_button:
+                field.secret_button.handle()
+                self.blit(field.secret_button)
+                if not field.errors:
+                    y += field.secret_button.get_rect().h
+
+            font.italic = True
+            for err in field.errors:
+                y += self.contents_margin_block // 8
+                text = font.render(f'• {err}', True, self._errors_color)
+                self.blit(text, rect=(field.get_rect().x, y, *text.get_size()))
+                y += text.get_height()
+            y += self.contents_margin_block
+
+        y = self.get_rect().h - self.contents_margin_block // 2 - self.submit_button.get_rect().h
+        self.submit_button.move(self.contents_margin_inline, y)
+        self.submit_button.handle()
+        self.blit(self.submit_button)

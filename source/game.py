@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pygame
 
-from utils import load_image
+from utils import load_media
 from templates import BaseSurface
 
 
@@ -212,7 +212,7 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         pygame.sprite.Sprite.__init__(self, *groups)
         BaseSurface.__init__(self, x, y, w, h, parent=field)
 
-        self._image = pygame.transform.scale(load_image(self.IMAGE_NAME), (w, h)) if self.IMAGE_NAME else None
+        self._image = pygame.transform.scale(load_media(self.IMAGE_NAME), (w, h)) if self.IMAGE_NAME else None
         self._color = None
         self._border = None
 

@@ -1,9 +1,9 @@
 import pygame
 
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_SIZE, UserEvents, Images
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Images
 from game import Field
 from templates import Button, BaseWindow, LowerPanel
-from utils import load_image, get_tiles, post_event, catch_events
+from utils import load_media, get_tiles, post_event, catch_events
 
 
 class TilesPanel(LowerPanel):
@@ -23,8 +23,8 @@ class TilesPanel(LowerPanel):
 
         for image_name, callbacks in buttons_data:
             btn = Button(-1, -1, 50, 50, parent=self)
-            buttons_hovered_view['content'] = load_image(image_name)
-            buttons_not_hovered_view['content'] = load_image(image_name)
+            buttons_hovered_view['content'] = load_media(image_name)
+            buttons_not_hovered_view['content'] = load_media(image_name)
             btn.set_hovered_view(**buttons_hovered_view)
             btn.set_not_hovered_view(**buttons_not_hovered_view)
             btn.bind_press(*callbacks)
@@ -54,7 +54,7 @@ class TilesPanel(LowerPanel):
 
         x, y = 10 + SCREEN_WIDTH // 5, 35
         for tile in tls.values():
-            img = pygame.transform.scale(load_image(tile.IMAGE_NAME), (100, 100))
+            img = pygame.transform.scale(load_media(tile.IMAGE_NAME), (100, 100))
             btn = Button(x, y, 48, 48, parent=self)
             btn.set_not_hovered_view(img)
             btn.set_hovered_view(img, 1.09, 1.09)
@@ -82,7 +82,7 @@ class TilesPanel(LowerPanel):
 class Editor(BaseWindow):
 
     def __init__(self):
-        super().__init__(0, 0, *SCREEN_SIZE)
+        super().__init__()
 
         self._tiles_panel = TilesPanel(
             (0, SCREEN_HEIGHT // 18 * 17, SCREEN_WIDTH, SCREEN_HEIGHT // 6),
@@ -109,10 +109,6 @@ class Editor(BaseWindow):
 
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
-
-        from tiles import Hero
-        hero = Hero(self._field, (5, 5))
-        self._field.add_cells(hero)
 
     def eventloop(self):
         for event in catch_events(False):
@@ -174,7 +170,6 @@ class Editor(BaseWindow):
         self.fill((54, 57, 62))
 
         self._field_updater()
-        self._field.handle()
 
         # if there are FPS issues, optimize the code below with lazy callees only on update (change of the rect)
         self._tiles_panel.handle()
