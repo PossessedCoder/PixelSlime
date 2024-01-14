@@ -76,7 +76,7 @@ class BaseSurface(pygame.Surface):
             self._rect.y = y
 
     # fake
-    def resize(self, w=..., h=...):  # anchors to center (center of the new rect will have the same center)
+    def resize(self, w=..., h=...):  # anchors to center (new rect will have the same center)
         # This method just resizes the rect of the surface, not the surface itself.
         # Real resize happens in the blit() method, which scales a surface to its rect size
         center = self._rect.center
@@ -393,6 +393,78 @@ class Panel(BaseSurface):
         self.move(*rect.topleft)
 
 
+class NotificationsPanel(Panel):
+
+    def __init__(self, minimized_rect, maximized_rect, resize_time, parent=None):
+        super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
+
+        self._text_surface = pygame.Surface(self._maximized_rect.size, pygame.SRCALPHA)
+        self._queue = Queue()
+
+        self._current_notification = (pygame.Surface((0, 0)), pygame.Surface((0, 0)), pygame.Surface((0, 0)))
+
+        # for tile in get_tiles().values():
+        #    self.add_notification('Вы открыли новый тайл', 'Доступен в редакторе уровней', load_image(tile.IMAGE_NAME))
+
+    @property
+    def current_title(self):
+        return self._current_notification[0]
+
+    @property
+    def current_text(self):
+        return self._current_notification[1]
+
+    @property
+    def current_image(self):
+        return self._current_notification[2]
+
+    def add_notification(self, title=..., text=..., image=...):
+        title = pygame.font.SysFont('serif', 18).render(title if isinstance(title, str) else '', True, (0, 0, 0))
+        text = pygame.font.SysFont(
+            'arial', 11, italic=True).render(text if isinstance(text, str) else '', True, (69, 69, 69))
+        image = pygame.transform.scale(image.copy(), (self.get_height() // 2, self.get_height() // 2)) \
+            if isinstance(image, pygame.Surface) else pygame.Surface((0, 0))
+        self._queue.put((title, text, image))
+
+    def handle(self):
+        if self.is_minimized():
+            try:
+                self._current_notification = next(self)
+                self.maximize(duration=3)
+            except StopIteration:
+                return
+
+        super().handle()
+
+        self.fill((204, 191, 190))
+        self._text_surface.fill((255, 255, 255, 0))
+
+        self._text_surface.blit(
+            self.current_title,
+            ((self._text_surface.get_width() - self.current_title.get_width() + self.current_image.get_width()) // 2,
+             (self._text_surface.get_height() - self.current_title.get_height() - self.current_text.get_height()) // 2)
+        )
+        self._text_surface.blit(
+            self.current_text,
+            ((self._text_surface.get_width() - self.current_text.get_width() + self.current_image.get_width()) // 2,
+             (self._text_surface.get_height() - self.current_text.get_height() + self.current_title.get_height()) // 2)
+        )
+        self._text_surface.blit(
+            self.current_image,
+            (self.current_image.get_width() // 4, self.current_image.get_height() // 2)
+        )
+        self.blit(
+            self._text_surface,
+            pygame.Rect(self.get_rect().w - self.get_width(), self.get_rect().h - self.get_height(), *self.get_size())
+        )
+
+    def __next__(self):
+        if self._queue.empty():
+            raise StopIteration('Notifications queue is empty') from None
+        return self._queue.get()
+
+
+
 class LowerPanel(Panel):
 
     def __init__(self, minimized_rect, maximized_rect, resize_time, parent=None):
@@ -604,13 +676,16 @@ class LineEdit(_SupportsBorder):
         pressed = pygame.key.get_pressed()
 
         if self.focused and (self._bs_next_unlock is None or datetime.now() > self._bs_next_unlock) \
-                and (pressed[pygame.K_RETURN] or pressed[pygame.K_BACKSPACE]):
+                and pressed[pygame.K_BACKSPACE]:
             self.text = self.text[:-1]
             delta = 40 if self._bs_next_unlock else 250
             self._bs_next_unlock = datetime.now() + timedelta(milliseconds=delta)
 
-        if not (pressed[pygame.K_RETURN] or pressed[pygame.K_BACKSPACE]):
+        if not pressed[pygame.K_BACKSPACE]:
             self._bs_next_unlock = None
+
+        if self.focused and pressed[pygame.K_RETURN]:
+            self.focused = False
 
         for event in catch_events(False):
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -629,7 +704,7 @@ class FormField(LineEdit):
         self._secret_state = True
         self._secret_button = None
 
-        self._errors = ()
+        self._errors = []
         self._label = None
 
     @property
@@ -689,11 +764,11 @@ class FormField(LineEdit):
 
     @property
     def errors(self):
-        return self._errors
+        return self._errors  # not a copy
 
     @errors.setter
-    def errors(self, values_iterable):
-        self._errors = tuple(values_iterable)
+    def errors(self, iterable):
+        self._errors = list(iterable)
 
     def draw(self):
         if self.secret_state is True:
@@ -705,7 +780,7 @@ class FormField(LineEdit):
             super().draw()
 
 
-class _Freezer:
+class Freezer:
 
     def freeze(self):
         post_event(UserEvents.FREEZE_CWW, freezer=self)
@@ -714,7 +789,7 @@ class _Freezer:
         post_event(UserEvents.UNFREEZE_CWW, freezer=self)
 
 
-class Form(_SupportsBorder, _Freezer):
+class Form(_SupportsBorder):
 
     def __init__(self, x, y, w, h, parent=None):
         super().__init__(x, y, w, h, parent=parent)
@@ -730,8 +805,6 @@ class Form(_SupportsBorder, _Freezer):
         self._margin_block = ...
 
         self._errors_color = pygame.Color(255, 0, 0)
-
-        self.freeze()
 
     @property
     def submit_button(self):
@@ -808,7 +881,6 @@ class Form(_SupportsBorder, _Freezer):
 
     def on_success(self):  # request db for saving data (can be accessed with as_tuple()), close form etc
         self.__del__()
-        self.unfreeze()
 
     def add_field(self, field):
         self._fields.append(field)
@@ -846,7 +918,7 @@ class Form(_SupportsBorder, _Freezer):
             self.blit(field)
             y += field.get_rect().h
 
-            if field.secret and not field.secret_button:
+            if field.secret:
                 secret_btn = Button(self.get_rect().w - self.contents_margin_inline - field.secret_view.get_rect().w, y,
                                     *field.secret_view.get_size(), parent=self)
                 secret_btn.set_hovered_view(field.secret_view)
