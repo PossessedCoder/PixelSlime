@@ -174,13 +174,11 @@ class _SupportsHover(_SupportsBorder):
             'border_color': None,
             'border_width': 0,
             'border_radius': 0,
-            'cursor': pygame.SYSTEM_CURSOR_ARROW,
             'background_color': None
         }
 
         self._hover_data = self._default_data.copy()
         self._no_hover_data = self._default_data.copy()
-        self._no_hover_data.pop('cursor')
 
         self._hover_emit_state = None
 
@@ -230,11 +228,10 @@ class _SupportsHover(_SupportsBorder):
             border_radius=0,
             border_color=None,
             border_width=0,
-            cursor=pygame.SYSTEM_CURSOR_ARROW,
             background_color=None
     ):
         self._set_view(self._hover_data, content.copy(), scale_x,
-                       scale_y, border_color, border_width, border_radius, cursor, background_color)
+                       scale_y, border_color, border_width, border_radius, background_color)
 
     def set_not_hovered_view(
             self,
@@ -265,13 +262,7 @@ class _SupportsHover(_SupportsBorder):
         super().draw()
 
     def draw(self):
-        if self.hovered:
-            draw_data = self._hover_data.copy()
-            pygame.mouse.set_cursor(pygame.cursors.Cursor(draw_data.pop('cursor')))  # CHECKME: bugged
-        else:
-            draw_data = self._no_hover_data.copy()
-
-        self._draw(**draw_data)
+        self._draw(**(self._hover_data if self.hovered else self._no_hover_data).copy())
 
 
 class Button(_SupportsHover):
