@@ -1,8 +1,9 @@
 import pygame
 
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Images
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media
 from game import Field
 from templates import Button, BaseWindow, LowerPanel
+from level import Level
 from utils import load_media, get_tiles, post_event, catch_events
 
 
@@ -14,11 +15,11 @@ class TilesPanel(LowerPanel):
         buttons_not_hovered_view = {'scale_x': 1, 'scale_y': 1, 'border_radius': 14}
         buttons_hovered_view = {'scale_x': 1.05, 'scale_y': 1.05, 'border_radius': 11}
         buttons_data = (
-            (Images.RUN, (lambda: None,)),
+            (Media.RUN, (lambda: Level(self.parent.to_field_data()),)),
             # actually bad practice to use setattr for parent's private attributes, but cannot use events everywhere,
             # because pygame has limitations on user events number: maximum 9 (with ids from 24 to 32)
-            (Images.TRASH_BIN, (lambda: setattr(self.parent, '_buttoned_cells', list()),)),
-            (Images.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),))
+            (Media.TRASH_BIN, (lambda: setattr(self.parent, '_buttoned_cells', list()),)),
+            (Media.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),))
         )
 
         for image_name, callbacks in buttons_data:
@@ -110,6 +111,17 @@ class Editor(BaseWindow):
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
 
+    def to_field_data(self):
+        data = []
+
+        for bc in self._buttoned_cells:
+            data.append(
+                (self._field.get_position_by_mouse_pos(bc.get_absolute_rect().center),
+                 bc.tile)
+            )
+
+        return data
+
     def eventloop(self):
         for event in catch_events(False):
             # LMB pressed and colliding field and not colliding tiles panel and any tile captured
@@ -121,6 +133,11 @@ class Editor(BaseWindow):
                 continue
             if not self._tiles_panel.captured_tile:
                 continue
+            if self._tiles_panel.captured_tile.USAGE_LIMIT is not None:
+                # times tile has been used on the field + 1 (current tile, if it will pass checks)
+                n = len(tuple(t.tile for t in self._buttoned_cells if t.tile == self._tiles_panel.captured_tile)) + 1
+                if n > self._tiles_panel.captured_tile.USAGE_LIMIT:
+                    continue
 
             # init real cell
             cell = self._tiles_panel.captured_tile(
