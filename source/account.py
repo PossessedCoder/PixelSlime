@@ -83,8 +83,9 @@ class _RegistrationForm(_BaseAuth):
         if not v:
             return False
 
-        if len(self.as_tuple()[0]) < 6:
+        if len(self.as_tuple()[1]) < 6:
             self.fields[1].errors.append('Пароль слишком короткий')
+            return False
 
         try:
             DataBase().create_user(*self.as_tuple())
