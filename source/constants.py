@@ -22,7 +22,7 @@ class UserEvents:
     START_SESSION = pygame.USEREVENT + 4  # attrs: uid
 
 
-class Images:
+class Media:
     # buttons
     RUN = 'run.png'
     FORWARD = 'forward.png'
@@ -32,6 +32,11 @@ class Images:
     EYE = 'eye.png'
     LEVELS_PREVIEW = 'levels_preview.png'
     WRENCH = 'wrench.png'
+
+    # texts
+    TITLE = 'title.gif'
+    LABEL_EDITOR = 'label_editor.gif'
+    LABEL_LEVELS = 'label_levels.gif'
 
     # tiles (and their dependencies)
     HERO = 'hero.png'

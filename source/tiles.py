@@ -2,18 +2,18 @@ import math
 
 import pygame
 
-from constants import Images
+from constants import Media
 from game import Cell
 from templates import BaseSurface
 from utils import load_media, catch_events
 
 
 class Hero(Cell):
-    IMAGE_NAME = Images.HERO
+    IMAGE_NAME = Media.HERO
     USAGE_LIMIT = 1
 
     class _ArrowVector(BaseSurface):  # Do not inherit from cell. Field.add_cells() will cause issues
-        IMAGE_NAME = Images.ARROW_VECTOR
+        IMAGE_NAME = Media.ARROW_VECTOR
 
         def __init__(self, x, y, w, h, parent=None):
             super().__init__(x, y, w, h, parent=parent)
@@ -46,6 +46,7 @@ class Hero(Cell):
 
     def __init__(self, field, coordinates, *groups, arrowed=True):
         super().__init__(field, coordinates, *groups)
+
         self._arrowed = arrowed
         self.speed = 3
         if self._arrowed:
@@ -59,8 +60,6 @@ class Hero(Cell):
                     self._arrow_vector.fly = True
         if self._arrow_vector.fly:
             angle = self._arrow_vector.angle % 360
-            print((abs(math.cos(math.radians(angle))) if angle > 90 else -abs(math.cos(math.radians(angle)))),
-                      -abs(math.sin(math.radians(angle))))
             self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90
                                            else -abs(math.sin(math.radians(angle)))) * self.speed,
                       self.get_rect().y + -abs(math.cos(math.radians(angle))) * self.speed)
@@ -78,7 +77,6 @@ class Hero(Cell):
         self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
         if self._arrowed:
             self._arrow_vector.rotate(1.5)
-            print(self._arrow_vector.angle)
 
     def handle(self):
         super().handle()

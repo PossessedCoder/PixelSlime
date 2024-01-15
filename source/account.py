@@ -1,6 +1,6 @@
 import pygame.font
 
-from constants import Images, UserEvents
+from constants import Media, UserEvents
 from exceptions import UserAlreadyExistsError
 from utils import load_media, post_event, DataBase
 from templates import Form, FormField, BaseSurface, Button, Freezer
@@ -26,7 +26,7 @@ class _BaseAuth(Form):
                             secret=secret, parent=self)
             fld.placeholder_text = label
             if secret:
-                fld.secret_view = load_media(Images.EYE)
+                fld.secret_view = load_media(Media.EYE)
             fld.set_focused_view(
                 border_radius=8,
                 border_color=(85, 106, 208),
