@@ -46,7 +46,6 @@ class Hero(Cell):
 
     def __init__(self, field, coordinates, *groups, arrowed=True):
         super().__init__(field, coordinates, *groups)
-
         self._arrowed = arrowed
         self.speed = 3
         if self._arrowed:
@@ -60,6 +59,8 @@ class Hero(Cell):
                     self._arrow_vector.fly = True
         if self._arrow_vector.fly:
             angle = self._arrow_vector.angle % 360
+            print((abs(math.cos(math.radians(angle))) if angle > 90 else -abs(math.cos(math.radians(angle)))),
+                      -abs(math.sin(math.radians(angle))))
             self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90
                                            else -abs(math.sin(math.radians(angle)))) * self.speed,
                       self.get_rect().y + -abs(math.cos(math.radians(angle))) * self.speed)

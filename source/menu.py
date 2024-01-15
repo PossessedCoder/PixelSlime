@@ -1,10 +1,9 @@
-import pygame.font
-
 from account import AuthTabs
 from constants import Images, SCREEN_WIDTH, SCREEN_HEIGHT
 from editor import Editor
-from templates import BaseWindow, Button, Panel
-from utils import load_media, DataBase
+from templates import BaseWindow, Button
+from utils import load_media
+from levels import Levels
 
 
 class Menu(BaseWindow):
@@ -26,6 +25,7 @@ class Menu(BaseWindow):
         self._button_editor.set_not_hovered_view(load_media(Images.WRENCH), background_color=(78, 78, 78),
                                                  border_radius=21)
         self._button_editor.bind_press(lambda: Editor())
+        self._button_levels.bind_press(lambda: Levels())
 
     def draw(self):
         self.fill((54, 57, 62))
