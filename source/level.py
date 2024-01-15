@@ -3,8 +3,9 @@ from queue import Queue
 import pygame
 
 from game import Field
-from templates import Panel
-from utils import get_tiles
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH, Media, UserEvents
+from templates import Panel, BaseWindow, LowerPanel, Button
+from utils import get_tiles, load_media, post_event
 
 
 class NotificationsPanel(Panel):
@@ -78,17 +79,66 @@ class NotificationsPanel(Panel):
         return self._queue.get()
 
 
-class LevelField(Field):
+class StartPanel(LowerPanel):
 
-    def __init__(self, x, y, w, h, parent=None):
-        super().__init__(x, y, w, h, parent=parent)
+    def __init__(self, minimized_rect, maximized_rect, resize_time=0.0, parent=None):
+        super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
+        if self._maximized_rect.collidepoint(pygame.mouse.get_pos()):
+            self.move(*self._maximized_rect.topleft)
+
+        buttons_not_hovered_view = {'scale_x': 1, 'scale_y': 1, 'border_radius': 14}
+        buttons_hovered_view = {'scale_x': 1.05, 'scale_y': 1.05, 'border_radius': 11}
+        buttons_data = (
+            (Media.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),)),
+        )
+
+        for image_name, callbacks in buttons_data:
+            btn = Button(-1, -1, 50, 50, parent=self)
+            buttons_hovered_view['content'] = load_media(image_name)
+            buttons_not_hovered_view['content'] = load_media(image_name)
+            btn.set_hovered_view(**buttons_hovered_view)
+            btn.set_not_hovered_view(**buttons_not_hovered_view)
+            btn.bind_press(*callbacks)
+            self.add_button(btn)
+
+
+class Level(BaseWindow):
+
+    def __init__(self, data):
+        super().__init__()
+
+        self._start_panel = StartPanel(
+            (0, SCREEN_HEIGHT // 18 * 17, SCREEN_WIDTH, SCREEN_HEIGHT // 6),
+            (0, SCREEN_HEIGHT // 6 * 5, SCREEN_WIDTH, SCREEN_HEIGHT // 6),
+            resize_time=0.3,
+            parent=self
+        )
+
+        y = 15
+        w = h = SCREEN_HEIGHT - y * 2 - (SCREEN_HEIGHT - SCREEN_HEIGHT // 18 * 17)
+        x = (SCREEN_WIDTH - w) // 2
+
+        self._field = Field(x, y, w, h, parent=self)
+
+        self._field.rows, self._field.cols = 15, 15
+        self._field.grid = (255, 255, 255)
+
+        self._setup_field(data)
 
     # data: dict[str, str | Type[Cell]]
-    def setup(self, data):
+    def _setup_field(self, data):
+        g = get_tiles()
         cells = []
 
-        for coordinates, factory in data.items():
-            factory = get_tiles(factory) if isinstance(factory, str) else factory
-            cells.append(factory(self, map(int, coordinates.split())))
+        for coordinates, factory in data:
+            cells.append(factory(self._field, coordinates))
 
-        self.add_cells(*cells)
+        self._field.add_cells(*cells)
+
+    def draw(self):
+        self.fill((54, 57, 62))
+
+        self._field.handle()
+        self.blit(self._field)
+        self._start_panel.handle()
+        self.blit(self._start_panel)
