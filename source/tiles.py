@@ -115,5 +115,4 @@ class Spike(Cell):
 
     def handle(self):
         super().handle()
-        self.eventloop()
         pygame.draw.rect(self._field, (255, 0, 0), self.get_rect(), border_radius=3, width=3)
