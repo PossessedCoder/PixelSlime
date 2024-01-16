@@ -63,6 +63,8 @@ class Hero(Cell):
             self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90
                                            else -abs(math.sin(math.radians(angle)))) * self.speed,
                       self.get_rect().y + -abs(math.cos(math.radians(angle))) * self.speed)
+            if self.collide()[0] == Spike:
+                self.death()
 
     def _get_arrow_vector_rect(self):
         return pygame.Rect(
@@ -83,3 +85,35 @@ class Hero(Cell):
 
         self._arrow_vector.handle()
         self._field.blit(self._arrow_vector)
+
+    def collide(self):
+        for el in self.parent.get_cells():
+            if self.get_rect().colliderect(el.get_rect()) and type(el) != Hero:
+                return type(el), el.get_rect()
+        return None
+
+    def death(self):
+        self.parent.remove_cells(self)
+
+
+class Block(Cell):
+    IMAGE_NAME = Media.BLOCK
+
+    def __init__(self, field, coordinates, *groups):
+        super().__init__(field, coordinates, *groups)
+
+    def handle(self):
+        super().handle()
+        pygame.draw.rect(self._field, (255, 0, 0), self.get_rect(), border_radius=3, width=3)
+
+
+class Spike(Cell):
+    IMAGE_NAME = Media.SPIKE
+
+    def __init__(self, field, coordinates, *groups):
+        super().__init__(field, coordinates, *groups)
+
+    def handle(self):
+        super().handle()
+        self.eventloop()
+        pygame.draw.rect(self._field, (255, 0, 0), self.get_rect(), border_radius=3, width=3)

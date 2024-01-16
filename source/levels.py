@@ -1,7 +1,7 @@
 from constants import Media
 from templates import BaseWindow, Button
-from utils import load_media
-
+from utils import load_media, post_event
+from constants import UserEvents
 
 class Levels(BaseWindow):
 
@@ -30,6 +30,7 @@ class Levels(BaseWindow):
                 a.set_not_hovered_view(load_media(Media.LEVELS_PREVIEW), background_color=(78, 78, 78),
                                        border_radius=25)
                 self._buttons.append(a)
+        self.back_button.bind_press(lambda: post_event(UserEvents.CLOSE_CWW))
 
     def eventloop(self):
         for button in self._buttons:
@@ -38,9 +39,9 @@ class Levels(BaseWindow):
     def draw(self):
         self.fill((54, 57, 62))
         for button in self._buttons:
-            button.draw()
+            button.handle()
             self.blit(button)
-        self.back_button.draw()
+        self.back_button.handle()
         self.blit(self.back_button)
-        self.user_levels_list_button.draw()
+        self.user_levels_list_button.handle()
         self.blit(self.user_levels_list_button)
