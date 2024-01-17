@@ -16,12 +16,12 @@ class Menu(BaseWindow):
         self._label_levels_frames = load_media(Media.LABEL_LEVELS)
         self._label_editor_frames = load_media(Media.LABEL_EDITOR)
 
-        self._button_levels = Button(470, 450, 300, 200, parent=self)
+        self._button_levels = Button(470, 450, 300, 300, parent=self)
         self._button_levels.set_hovered_view(load_media(Media.LEVELS_PREVIEW), background_color=(69, 69, 69),
                                              border_radius=15, scale_x=1.03, scale_y=1.03)
         self._button_levels.set_not_hovered_view(load_media(Media.LEVELS_PREVIEW), background_color=(78, 78, 78),
                                                  border_radius=21)
-        self._button_editor = Button(1150, 450, 300, 200, parent=self)
+        self._button_editor = Button(1150, 450, 300, 300, parent=self)
         self._button_editor.set_hovered_view(load_media(Media.WRENCH), background_color=(69, 69, 69),
                                              border_radius=15, scale_x=1.03, scale_y=1.03)
         self._button_editor.set_not_hovered_view(load_media(Media.WRENCH), background_color=(78, 78, 78),
