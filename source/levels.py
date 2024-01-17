@@ -33,7 +33,7 @@ class Levels(BaseWindow):
                 a.set_not_hovered_view(self.font.render(f' {c} ', False, (255, 255, 255)),
                                        background_color=(78, 78, 78),
                                        border_radius=25)
-                a.set_hovered_view(self.font.render(f'{c}', False, (255 // 2, 255 // 2, 255 // 2)), background_color=(78, 78, 78),
+                a.set_hovered_view(self.font.render(f' {c} ', False, (255 // 2, 255 // 2, 255 // 2)), background_color=(78, 78, 78),
                                    border_radius=25)
                 self._buttons.append(a)
                 c += 1
