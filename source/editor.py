@@ -1,47 +1,85 @@
+import sqlite3
+
 import pygame
 
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media
 from game import Field
-from templates import Button, BaseWindow, LowerPanel
 from level import Level
-from utils import load_media, get_tiles, post_event, catch_events
+from templates import Button, BaseWindow, LowerPanel, StyledForm, Freezer, NotificationsPanel
+from utils import load_media, post_event, catch_events, DataBase
+
+
+class FormLevelInfo(StyledForm, Freezer):
+
+    def __init__(self, x, y, w, h, parent=None):
+        super().__init__(x, y, w, h, parent=parent)
+        self.title = 'Сохранение уровня'
+
+        self.freeze()
+
+        self.add_field(placeholder='Название')
+
+    def draw(self):
+        super().draw()
+
+    def validate(self):
+        for fld in self.fields:
+            fld.errors.clear()
+
+        if not self.as_tuple()[0]:
+            self.fields[0].errors.append('Не может быть пустым')
+
+        try:
+            self.parent.save_level(self.as_tuple()[0])
+            return True
+        except sqlite3.Error:
+            self.fields[0].errors.append('Уровень с таким названием уже существует')
+            return False
+
+    def on_success(self):
+        super().on_success()
+        self.unfreeze()
 
 
 class TilesPanel(LowerPanel):
 
-    def __init__(self, minimized_rect, maximized_rect, resize_time, parent=None):
+    def __init__(self, uid, minimized_rect, maximized_rect, resize_time, parent=None):
         super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
 
-        buttons_not_hovered_view = {'scale_x': 1, 'scale_y': 1, 'border_radius': 14}
-        buttons_hovered_view = {'scale_x': 1.05, 'scale_y': 1.05, 'border_radius': 11}
+        buttons_not_hovered_view = {'scale_x': 1, 'scale_y': 1, 'border_radius': 24}
+        buttons_hovered_view = {'scale_x': 1.05, 'scale_y': 1.05, 'border_radius': 21}
         buttons_data = (
-            (Media.RUN, (lambda: Level(self.parent.to_field_data()),)),
+            (Media.RUN, (lambda: Level.from_data(self.parent.to_field_data()),)),
+            (Media.CLEAR, (lambda: setattr(self.parent, '_buttoned_cells', list()),)),
+            (Media.SAVE, (lambda: self._request_level_info(),)),
             # actually bad practice to use setattr for parent's private attributes, but cannot use events everywhere,
             # because pygame has limitations on user events number: maximum 9 (with ids from 24 to 32)
-            (Media.TRASH_BIN, (lambda: setattr(self.parent, '_buttoned_cells', list()),)),
             (Media.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),))
         )
 
         for image_name, callbacks in buttons_data:
-            btn = Button(-1, -1, 50, 50, parent=self)
+            btn = Button(-1, -1, 100, 100, parent=self)
             buttons_hovered_view['content'] = load_media(image_name)
             buttons_not_hovered_view['content'] = load_media(image_name)
-            btn.set_hovered_view(**buttons_hovered_view)
-            btn.set_not_hovered_view(**buttons_not_hovered_view)
+            btn.set_hovered_view(**buttons_hovered_view, background_color=(102, 121, 213))
+            btn.set_not_hovered_view(**buttons_not_hovered_view, background_color=(85, 106, 208))
             btn.bind_press(*callbacks)
             self.add_button(btn)
 
         self._captured_tile = None
         self._available_tiles = []
-        self._get_available_tiles()
+        self._get_available_tiles(uid)
+
+    def _request_level_info(self):
+        w, h = SCREEN_WIDTH // 6, SCREEN_HEIGHT / 2.5
+        FormLevelInfo(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self.parent)
 
     @property
     def captured_tile(self):
         return self._captured_tile
 
-    # CHECKME: conceptual method, should be changed when db API will be ready
-    def _get_available_tiles(self):
-        tls = get_tiles()
+    def _get_available_tiles(self, uid):
+        tls = DataBase().get_unlocked_tiles(uid)
 
         def _tile_preview_onclick(button, factory):
             self._captured_tile = factory
@@ -82,22 +120,23 @@ class TilesPanel(LowerPanel):
 
 class Editor(BaseWindow):
 
-    def __init__(self):
+    def __init__(self, uid):
         super().__init__()
 
         self._tiles_panel = TilesPanel(
+            uid,
             (0, SCREEN_HEIGHT // 18 * 17, SCREEN_WIDTH, SCREEN_HEIGHT // 6),
             (0, SCREEN_HEIGHT // 6 * 5, SCREEN_WIDTH, SCREEN_HEIGHT // 6),
             resize_time=0.3,
             parent=self
         )
 
-        # self._notifications = NotificationsPanel(
-        #     (SCREEN_WIDTH, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
-        #     (SCREEN_WIDTH // 6 * 5, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
-        #     resize_time=0.5,
-        #     parent=self
-        # )
+        self._notifications_panel = NotificationsPanel(
+            (SCREEN_WIDTH, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
+            (SCREEN_WIDTH // 6 * 5, SCREEN_HEIGHT // 2 - SCREEN_HEIGHT // 8, SCREEN_WIDTH // 6, SCREEN_HEIGHT // 8),
+            resize_time=0.5,
+            parent=self
+        )
 
         y = 15
         w = h = SCREEN_HEIGHT - y * 2 - (SCREEN_HEIGHT - self._tiles_panel.get_rect().y)
@@ -110,6 +149,12 @@ class Editor(BaseWindow):
 
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
+
+    def save_level(self, name):
+        data = tuple((f'{pos.row} {pos.col}', factory.__name__) for pos, factory in self.to_field_data())
+        post_event(UserEvents.SAVE_LEVEL, name=name, fdata=data)
+        self._notifications_panel.add_notification('Уровень сохранен', f'Название: {name}',
+                                                   load_media(Media.SUCCESS), duration=3)
 
     def to_field_data(self):
         data = []
@@ -188,6 +233,8 @@ class Editor(BaseWindow):
 
         self._field_updater()
 
-        # if there are FPS issues, optimize the code below with lazy callees only on update (change of the rect)
         self._tiles_panel.handle()
         self.blit(self._tiles_panel)
+        self._notifications_panel.handle()
+        if not self._notifications_panel.is_minimized():
+            self.blit(self._notifications_panel)
