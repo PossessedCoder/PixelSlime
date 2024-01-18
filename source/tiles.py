@@ -144,3 +144,4 @@ class Exit(Cell):
     def handle(self):
         super().handle()
         pygame.draw.rect(self._field, (0, 255, 0), self.get_rect(), border_radius=3, width=3)
+####
