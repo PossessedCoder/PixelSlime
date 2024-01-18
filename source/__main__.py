@@ -4,7 +4,7 @@ import pygame
 
 from constants import FPS, SCREEN_SIZE, UserEvents
 from menu import Menu
-from utils import catch_events
+from utils import catch_events, DataBase
 
 
 class Main:
@@ -20,8 +20,6 @@ class Main:
 
     def _eventloop(self):
         for event in catch_events():  # gets a new queue of events
-            if event.type == pygame.QUIT or not self._windows_stack:
-                sys.exit()  # terminates executing if pygame.quit() in run() didn't do it
             if event.type == UserEvents.SET_CWW and self._windows_stack[-1] != event.window:
                 self._windows_stack.append(event.window)
             if event.type == UserEvents.CLOSE_CWW:
@@ -32,6 +30,12 @@ class Main:
                 self._freezers.remove(event.freezer)
             if event.type == UserEvents.START_SESSION:
                 self._session = event.uid
+            if event.type == UserEvents.SAVE_LEVEL:
+                DataBase().create_level(event.name, event.fdata, self._session)
+            if event.type == UserEvents.RUN_WITH_UID:
+                event.runner(self._session)
+            if event.type == pygame.QUIT or not self._windows_stack:
+                sys.exit()  # terminates executing if pygame.quit() in run() didn't do it
 
     def _mainloop(self):
         while True:

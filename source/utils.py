@@ -7,7 +7,6 @@ import bcrypt
 import pygame
 
 from constants import MEDIA_URL, DB_URL
-from exceptions import UserAlreadyExistsError
 
 
 class _MediaFramesIterator:
@@ -93,6 +92,9 @@ def catch_events(_update_queue=True):
 
 class DataBase:
     USERS_TABLE = 'users'
+    LEVELS_TABLE = 'levels'
+    TILES_TABLE = 'tiles'
+    COMPLETED_LEVELS_TABLE = 'completedLevels'
 
     def __init__(self):
         with sqlite3.connect(DB_URL) as connection:
@@ -106,7 +108,7 @@ class DataBase:
 
     def create_user(self, login, password):
         if self.get_uid(login):
-            raise UserAlreadyExistsError(f'Login "{login}" is already taken')
+            raise OverflowError(f'Login "{login}" is already taken')
 
         password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
@@ -123,3 +125,83 @@ class DataBase:
     def is_correct_password(self, uid, password):
         saved_hashed = self.get_user(uid)[2]
         return bcrypt.checkpw(password.encode('utf-8'), saved_hashed)
+
+    def get_level_by_name(self, name, uid):
+        return self._cursor.execute(
+            f'SELECT * FROM {self.LEVELS_TABLE} WHERE name = ? AND author_id = ?', (name, uid)
+        ).fetchone()
+
+    def get_level_by_id(self, level_id):
+        return self._cursor.execute(f'SELECT * FROM {self.LEVELS_TABLE} WHERE id = ?', (level_id,)).fetchone()
+
+    def get_level_field_data(self, level_id):
+        return self._cursor.execute(f'SELECT rowcol, tilename FROM {self.TILES_TABLE}'
+                                    f' WHERE level_id = {level_id}').fetchall()
+
+    def create_level(self, name, fdata, uid):
+        self._cursor.execute(f'INSERT INTO {self.LEVELS_TABLE} (name, author_id)'
+                             f'VALUES (?, ?)', (name, uid))
+        self._commit()
+        self._save_data(fdata, self.get_level_by_name(name, uid)[0])
+
+    def _save_data(self, fdata, level_id):
+        s = ', '.join((str((f'{rc}', f'{tn}', level_id)) for rc, tn in fdata))
+        self._cursor.execute(f'INSERT INTO {self.TILES_TABLE} (rowcol, tilename, level_id) VALUES {s};')
+        self._commit()
+
+    def delete_level(self, level_id):
+        self._cursor.execute(f'DELETE FROM {self.LEVELS_TABLE} WHERE id = ?', (level_id,))
+        self._commit()
+
+    def get_unlocked_levels_num(self, uid):
+        return self._cursor.execute(
+            f'SELECT count() FROM {self.COMPLETED_LEVELS_TABLE} WHERE uid = ?', (uid,)
+        ).fetchone()[0] + 1
+
+    def get_new_tiles(self, uid, level_id):
+        unlocked = self.get_unlocked_tiles(uid)
+
+        tiles_on_level = set(e[0] for e in self._cursor.execute(f'''
+            SELECT DISTINCT tilename FROM {self.TILES_TABLE} WHERE level_id = ?
+        ''', (level_id,)).fetchall())
+
+        unique = set(unlocked) ^ tiles_on_level
+
+        return get_tiles(*unique) if unique else dict()
+
+    def save_completion(self, level_id, uid, time):
+        self._cursor.execute(f'INSERT INTO {self.COMPLETED_LEVELS_TABLE} (level_id, uid, time) VALUES (?, ?, ?)',
+                             (level_id, uid, time))
+        self._commit()
+
+    def get_best_time(self, level_id, uid):
+        f = self._cursor.execute(
+            f'SELECT MIN(time) FROM {self.COMPLETED_LEVELS_TABLE} WHERE level_id = ? AND uid = ?', (level_id, uid)
+        ).fetchone()
+        return f if f is None else f[0]
+
+    def get_pages_num(self, items_on_page):
+        f = self._cursor.execute(f'SELECT count() FROM {self.LEVELS_TABLE} WHERE author_id != 0').fetchone()[0]
+        return f // items_on_page + (1 if f % items_on_page != 0 else 0)
+
+    def load_page(self, page, items_on_page):
+        return self._cursor.execute(
+            f'SELECT l.id, l.name, l.author_id, u.login FROM {self.LEVELS_TABLE} l '
+            f'INNER JOIN {self.USERS_TABLE} u ON l.author_id = u.uid '
+            f'WHERE l.author_id != 0 '
+            f'LIMIT {items_on_page} OFFSET {(page - 1) * items_on_page}'
+        ).fetchall()
+
+    def get_system_levels(self):
+        return self._cursor.execute(f'SELECT id, name FROM {self.LEVELS_TABLE} WHERE author_id = 0').fetchall()
+
+    def get_unlocked_tiles(self, uid):
+        tilenames = self._cursor.execute(
+            f'SELECT DISTINCT t.tilename FROM {self.TILES_TABLE} t '
+            f'WHERE (SELECT count() FROM {self.COMPLETED_LEVELS_TABLE} c '
+            f'INNER JOIN {self.LEVELS_TABLE} l ON c.level_id = l.id '
+            f'WHERE l.author_id = 0 AND c.level_id = t.level_id AND c.uid = ?) > 0',
+            (uid,)
+        ).fetchall()
+
+        return get_tiles(*(t[0] for t in tilenames)) if tilenames else dict()

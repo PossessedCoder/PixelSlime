@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
+from queue import Queue
 
 import pygame
 
-from constants import FPS, UserEvents, SCREEN_SIZE
-from utils import catch_events, post_event
+from constants import FPS, UserEvents, SCREEN_SIZE, Media
+from utils import catch_events, post_event, load_media
 
 
 class BaseSurface(pygame.Surface):
@@ -719,8 +720,10 @@ class Freezer:
 
 class Form(_SupportsBorder):
 
-    def __init__(self, x, y, w, h, parent=None):
+    def __init__(self, x, y, w, h, parent=None, closeable=True):
         super().__init__(x, y, w, h, parent=parent)
+
+        self._close_button_color = None if not closeable else pygame.Color(255, 255, 255)
 
         self._title = ''
         self._title_color = pygame.Color(255, 255, 255)
@@ -733,6 +736,20 @@ class Form(_SupportsBorder):
         self._margin_block = ...
 
         self._errors_color = pygame.Color(255, 0, 0)
+
+    @property
+    def close_button_color(self):
+        if self._close_button_color is None:
+            raise AttributeError('Form is not closeable. "close_button_color" property is not available')
+
+        return self._close_button_color
+
+    @close_button_color.setter
+    def close_button_color(self, value):
+        if self._close_button_color is None:
+            raise AttributeError('Form is not closeable. "close_button_color" setter is not available')
+
+        self._close_button_color = pygame.Color(*value)
 
     @property
     def submit_button(self):
@@ -814,7 +831,10 @@ class Form(_SupportsBorder):
         self._fields.append(field)
 
     def _get_avg_fields_font_size(self):
-        return round(sum(field.get_font().get_height() for field in self._fields) / len(self._fields))
+        try:
+            return round(sum(field.get_font().get_height() for field in self._fields) / len(self._fields))
+        except ZeroDivisionError:
+            return 0
 
     def draw(self):
         self.fill(self.background_color)
@@ -835,11 +855,9 @@ class Form(_SupportsBorder):
             font = field.get_font()
 
             if field.label:
-                font.bold = True
                 field_label = font.render(field.label, True, (255, 255, 255))
                 self.blit(field_label, rect=(field.get_rect().x, y, *field_label.get_size()))
                 y += field_label.get_height() + 5
-            font.bold = False
 
             field.move(self.contents_margin_inline, y)
             field.handle()
@@ -872,3 +890,146 @@ class Form(_SupportsBorder):
         self.submit_button.move(self.contents_margin_inline, y)
         self.submit_button.handle()
         self.blit(self.submit_button)
+
+        if self._close_button_color:
+            surf = BaseSurface(self.get_rect().w - self.submit_button.get_height() // 2 - 15, 15,
+                               self.submit_button.get_height() // 2, self.submit_button.get_height() // 2)
+            pygame.draw.line(surf, self.close_button_color, (1, 1), surf.get_size())
+            pygame.draw.line(surf, self.close_button_color, (0, surf.get_height()), (surf.get_width(), 0))
+
+            btn = Button(*surf.get_rect(), parent=self)
+            btn.bind_press(
+                lambda: post_event(UserEvents.UNFREEZE_CWW, freezer=self if isinstance(self, Freezer) else self.parent)
+            )
+            btn.set_hovered_view(surf)
+            btn.set_not_hovered_view(surf)
+            btn.handle()
+            self.blit(btn)
+
+
+class StyledForm(Form):
+
+    def __init__(self, x, y, w, h, parent=None, closeable=True):
+        super().__init__(x, y, w, h, parent=parent, closeable=closeable)
+
+        if closeable:
+            self.close_button_color = (117, 119, 119)
+
+        self._field_height, self._field_width = 35, self.get_rect().w - self.contents_margin_inline * 2
+        self._font = pygame.font.SysFont('arial', self._field_height // 2)
+
+        self.title_color = (209, 203, 203)
+        self.background_color = (54, 53, 53)
+        self.border_radius = 30
+        self.border_width = 1
+        self.border_color = (105, 105, 105)
+        self.errors_color = (235, 64, 52)
+
+        view = BaseSurface(-1, -1, self._field_width, self._field_height)
+        font = self._font
+        font.bold = True
+        submit_text = font.render('Продолжить', True, (255, 255, 255))
+        view.blit(submit_text, rect=((view.get_rect().w - submit_text.get_width()) // 2,
+                                     (view.get_rect().h - submit_text.get_height()) // 2, *submit_text.get_size()))
+        submit_btn = Button(*view.get_rect(), parent=self)
+        submit_btn.set_hovered_view(view, background_color=(102, 121, 213), border_radius=15)
+        submit_btn.set_not_hovered_view(view, background_color=(85, 106, 208), border_radius=15)
+        self.submit_button = submit_btn
+
+    def add_field(self, label=None, placeholder=None, secret=False):
+        field = FormField(self._field_width, self._field_height, secret=secret, parent=self)
+
+        if label:
+            field.label = label
+        if placeholder:
+            field.placeholder_text = placeholder
+        if secret:
+            field.secret_view = load_media(Media.EYE)
+        field.set_focused_view(
+            border_radius=8,
+            border_color=pygame.Color(85, 106, 208),
+            background_color=pygame.Color(54, 53, 53),
+            text_color=pygame.Color(209, 203, 203),
+            placeholder_color=pygame.Color(125, 125, 125),
+        )
+        field.set_unfocused_view(
+            border_radius=8,
+            border_width=0,
+            background_color=pygame.Color(38, 38, 39),
+            text_color=pygame.Color(209, 203, 203),
+            placeholder_color=pygame.Color(125, 125, 125)
+        )
+
+        super().add_field(field)
+
+
+class NotificationsPanel(Panel):
+
+    def __init__(self, minimized_rect, maximized_rect, resize_time, parent=None):
+        super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
+
+        self._text_surface = pygame.Surface(self._maximized_rect.size, pygame.SRCALPHA)
+        self._queue = Queue()
+
+        self._current_notification = (pygame.Surface((0, 0)), pygame.Surface((0, 0)), pygame.Surface((0, 0)))
+
+        # for tile in get_tiles().values():
+        #    self.add_notification('Вы открыли новый тайл', 'Доступен в редакторе уровней', load_image(tile.IMAGE_NAME))
+
+    @property
+    def current_title(self):
+        return self._current_notification[0]
+
+    @property
+    def current_text(self):
+        return self._current_notification[1]
+
+    @property
+    def current_image(self):
+        return self._current_notification[2]
+
+    def add_notification(self, title=..., text=..., image=..., duration=float('inf')):
+        title = pygame.font.SysFont('serif', 18).render(title if isinstance(title, str) else '', True, (0, 0, 0))
+        text = pygame.font.SysFont(
+            'arial', 11, italic=True).render(text if isinstance(text, str) else '', True, (69, 69, 69))
+        image = pygame.transform.scale(image.copy(), (self.get_height() // 2, self.get_height() // 2)) \
+            if isinstance(image, pygame.Surface) else pygame.Surface((0, 0))
+        self._queue.put((title, text, image, duration))
+
+    def draw(self):
+        self.fill((204, 191, 190))
+        self._text_surface.fill((255, 255, 255, 0))
+
+        self._text_surface.blit(
+            self.current_title,
+            ((self._text_surface.get_width() - self.current_title.get_width() + self.current_image.get_width()) // 2,
+             (self._text_surface.get_height() - self.current_title.get_height() - self.current_text.get_height()) // 2)
+        )
+        self._text_surface.blit(
+            self.current_text,
+            ((self._text_surface.get_width() - self.current_text.get_width() + self.current_image.get_width()) // 2,
+             (self._text_surface.get_height() - self.current_text.get_height() + self.current_title.get_height()) // 2)
+        )
+        self._text_surface.blit(
+            self.current_image,
+            (self.current_image.get_width() // 4, self.current_image.get_height() // 2)
+        )
+        self.blit(
+            self._text_surface,
+            pygame.Rect(self.get_rect().w - self.get_width(), self.get_rect().h - self.get_height(), *self.get_size())
+        )
+
+    def handle(self):
+        if self.is_minimized():
+            try:
+                self._current_notification = next(self)
+                self.maximize(duration=self._current_notification[3])
+            except StopIteration:
+                return
+
+        super().handle()
+
+    def __next__(self):
+        if self._queue.empty():
+            raise StopIteration('Notifications queue is empty') from None
+        return self._queue.get()
