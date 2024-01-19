@@ -6,7 +6,7 @@ from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media
 from game import Field
 from level import Level
 from templates import Button, BaseWindow, LowerPanel, StyledForm, Freezer, NotificationsPanel
-from utils import load_media, post_event, catch_events, DataBase
+from utils import load_media, post_event, catch_events, DataBase, get_tiles
 
 
 class FormLevelInfo(StyledForm, Freezer):
@@ -79,7 +79,7 @@ class TilesPanel(LowerPanel):
         return self._captured_tile
 
     def _get_available_tiles(self, uid):
-        tls = DataBase().get_unlocked_tiles(uid)
+        tls = get_tiles() #DataBase().get_unlocked_tiles(uid)
 
         def _tile_preview_onclick(button, factory):
             self._captured_tile = factory

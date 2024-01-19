@@ -104,6 +104,17 @@ class Hero(Cell):
                 self._finished = True
             elif Block in self._get_collided_tiles():
                 self._arrow_vector.flying = False
+                o, s = self._get_collided_tiles()[Block][0].get_rect(), self.get_rect()
+                if abs(o[0] - s[0]) > abs(o[1] - s[1]):
+                    if o[0] > s[0]:
+                        self.rotate(90)
+                    else:
+                        self.rotate(-90)
+                else:
+                    self._image = pygame.transform.flip(self._image, False, True)
+
+    def rotate(self, angle):
+        self._image = pygame.transform.rotate(self._image, angle)
 
     def draw(self):
         super().draw()
