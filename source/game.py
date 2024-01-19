@@ -217,6 +217,11 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         self._color = None
         self._border = None
 
+    def to_initial(self):
+        self.parent.remove_cells(self)
+        self.parent.add_cells(self.__class__(self.parent, self.start_coordinates, *self.groups()))
+        self.__del__()
+
     def draw(self):
         if self.color:
             pygame.draw.rect(self, self.color, self.get_rect())

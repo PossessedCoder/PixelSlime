@@ -24,8 +24,13 @@ class Hero(Cell):
             self._d_angle = -1
             self._fly = False
 
-        def is_flying(self):
+        @property
+        def flying(self):
             return self._fly
+
+        @flying.setter
+        def flying(self, value):
+            self._fly = value
 
         @property
         def image(self):
@@ -51,16 +56,25 @@ class Hero(Cell):
         super().__init__(field, coordinates, *groups)
 
         self._arrowed = arrowed
-        self.speed = 10
-        self.finished = False
+        self._speed = 10
+        self._finished = False
+        self._dead = False
         if self._arrowed:
             # will be moved in update (_get_arrow_vector_rect() relies on ArrowVector size)
             self._arrow_vector = self._ArrowVector(-1, -1, *self.get_size(), parent=field)
 
+    @property
+    def finished(self):
+        return self._finished
+
+    @property
+    def dead(self):
+        return self._dead
+
     def eventloop(self):
         for e in catch_events(False):
             if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
-                self._arrow_vector._fly = True
+                self._arrow_vector.flying = True
 
     def _get_arrow_vector_rect(self):
         return pygame.Rect(
@@ -70,29 +84,29 @@ class Hero(Cell):
             *self.get_rect().size
         )
 
-    def update(self, *events):
+    def update(self):
         self.move(self.get_rect().x, self.get_rect().y)
         self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
         if self._arrowed:
             self._arrow_vector.rotate(1.5)
 
-        if self._arrow_vector.is_flying():
+        if self._arrow_vector.flying:
             angle = self._arrow_vector.angle % 360
             self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90
-                                           else -abs(math.sin(math.radians(angle)))) * self.speed,
-                      self.get_rect().y + -abs(math.cos(math.radians(angle))) * self.speed)
+                                           else -abs(math.sin(math.radians(angle)))) * self._speed,
+                      self.get_rect().y + -abs(math.cos(math.radians(angle))) * self._speed)
 
             if Spike in self._get_collided_tiles():
-                self._death()
-            elif Block in self._get_collided_tiles():
-                self._arrow_vector._fly = False
+                self._dead = True
+                self._arrow_vector.flying = False
             elif Exit in self._get_collided_tiles():
-                self._arrow_vector._fly = False
-                self.finished = True
-                self._death()
+                self._arrow_vector.flying = False
+                self._finished = True
+            elif Block in self._get_collided_tiles():
+                self._arrow_vector.flying = False
 
-    def handle(self):
-        super().handle()
+    def draw(self):
+        super().draw()
 
         self._arrow_vector.handle()
         self._field.blit(self._arrow_vector)
@@ -109,38 +123,14 @@ class Hero(Cell):
 
         return collided
 
-    def _death(self):
-        self.parent.remove_cells(self)
-
 
 class Block(Cell):
     IMAGE_NAME = Media.BLOCK
-
-    def __init__(self, field, coordinates, *groups):
-        super().__init__(field, coordinates, *groups)
-
-    def handle(self):
-        super().handle()
-        pygame.draw.rect(self._field, (255, 0, 0), self.get_rect(), border_radius=3, width=3)
 
 
 class Spike(Cell):
     IMAGE_NAME = Media.SPIKE
 
-    def __init__(self, field, coordinates, *groups):
-        super().__init__(field, coordinates, *groups)
-
-    def handle(self):
-        super().handle()
-        pygame.draw.rect(self._field, (255, 0, 0), self.get_rect(), border_radius=3, width=3)
-
 
 class Exit(Cell):
     IMAGE_NAME = Media.TRASH_BIN
-
-    def __init__(self, field, coordinates, *groups):
-        super().__init__(field, coordinates, *groups)
-
-    def handle(self):
-        super().handle()
-        pygame.draw.rect(self._field, (0, 255, 0), self.get_rect(), border_radius=3, width=3)

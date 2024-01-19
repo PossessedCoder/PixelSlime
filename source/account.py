@@ -1,66 +1,26 @@
-import pygame.font
+import pygame
 
-from constants import Media, UserEvents
-from exceptions import UserAlreadyExistsError
-from utils import load_media, post_event, DataBase
-from templates import Form, FormField, BaseSurface, Button, Freezer
+from constants import UserEvents
+from utils import post_event, DataBase
+from templates import BaseSurface, Button, Freezer, StyledForm
 
 
-class _BaseAuth(Form):
+class _BaseAuth(StyledForm):
 
     def __init__(self, x, y, w, h, parent=None):
-        super().__init__(x, y, w, h, parent=parent)
+        super().__init__(x, y, w, h, parent=parent, closeable=False)
 
-        self.title_color = (209, 203, 203)
-        self.background_color = (54, 53, 53)
-        self.border_radius = 30
-        self.border_width = 1
-        self.border_color = (105, 105, 105)
-        self.errors_color = (235, 64, 52)
-
-        # label, secret
-        fields_data = (('Логин', False), ('Пароль', True))
-
-        for label, secret in fields_data:
-            fld = FormField(self.get_rect().w - self.contents_margin_inline * 2, 35,
-                            secret=secret, parent=self)
-            fld.placeholder_text = label
-            if secret:
-                fld.secret_view = load_media(Media.EYE)
-            fld.set_focused_view(
-                border_radius=8,
-                border_color=(85, 106, 208),
-                background_color=(54, 53, 53),
-                text_color=(209, 203, 203),
-                placeholder_color=(125, 125, 125)
-            )
-            fld.set_unfocused_view(
-                border_radius=8,
-                border_width=0,
-                background_color=(38, 38, 39),
-                text_color=(209, 203, 203),
-                placeholder_color=(125, 125, 125)
-            )
-            self.add_field(fld)
-        view = BaseSurface(-1, -1, *self.fields[0].get_rect().size)
-        font = self.fields[0].get_font()
-        font.bold = True
-        submit_text = font.render('Продолжить', True, (255, 255, 255))
-        view.blit(submit_text, rect=((view.get_rect().w - submit_text.get_width()) // 2,
-                                     (view.get_rect().h - submit_text.get_height()) // 2, *submit_text.get_size()))
-        submit_btn = Button(*view.get_rect(), parent=self)
-        submit_btn.set_hovered_view(view, background_color=(102, 121, 213), border_radius=15)
-        submit_btn.set_not_hovered_view(view, background_color=(85, 106, 208), border_radius=15)
-        self.submit_button = submit_btn
+        self.add_field(placeholder='Логин')
+        self.add_field(placeholder='Пароль', secret=True)
 
     def validate(self):
         for fld in self.fields:
             fld.errors.clear()
 
         if not self.as_tuple()[0]:
-            self.fields[0].errors.append('Это поле не может быть пустым')
+            self.fields[0].errors.append('Не может быть пустым')
         if not self.as_tuple()[1]:
-            self.fields[1].errors.append('Это поле не может быть пустым')
+            self.fields[1].errors.append('Не может быть пустым')
 
         if not self.fields[0].errors and not self.fields[1].errors:
             return True
@@ -90,7 +50,7 @@ class _RegistrationForm(_BaseAuth):
         try:
             DataBase().create_user(*self.as_tuple())
             return True
-        except UserAlreadyExistsError:
+        except OverflowError:
             self.fields[0].errors.append('Это имя занято')
             return False
 
@@ -165,5 +125,5 @@ class AuthTabs(BaseSurface, Freezer):
 
     def on_form_success(self):
         self.__del__()
-        post_event(UserEvents.UNFREEZE_CWW, freezer=self)
+        self.unfreeze()
         post_event(UserEvents.START_SESSION, uid=DataBase().get_uid(self._current_tab.as_tuple()[0]))

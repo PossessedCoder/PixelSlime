@@ -20,6 +20,10 @@ class UserEvents:
     FREEZE_CWW = pygame.USEREVENT + 2  # attrs: freezer
     UNFREEZE_CWW = pygame.USEREVENT + 3  # attrs: freezer
     START_SESSION = pygame.USEREVENT + 4  # attrs: uid
+    SAVE_LEVEL = pygame.USEREVENT + 5  # attrs: name, fdata
+    DELETE_LEVEL = pygame.USEREVENT + 6  # attrs: name
+    LEVEL_COMPLETED = pygame.USEREVENT + 7  # attrs: level_id, time
+    RUN_WITH_UID = pygame.USEREVENT + 8  # attrs: runner
 
 
 class Media:
@@ -32,6 +36,10 @@ class Media:
     EYE = 'eye.png'
     LEVELS_PREVIEW = 'levels_preview.png'
     WRENCH = 'wrench.png'
+    SAVE = 'save.png'
+    CLEAR = 'clear.png'
+    CROSS = 'cross.png'
+    DOCUMENT = 'saved_levels.png'
 
     # texts
     TITLE = 'title.gif'
@@ -41,5 +49,12 @@ class Media:
     # tiles (and their dependencies)
     HERO = 'hero.png'
     ARROW_VECTOR = 'arrow_vector.png'
-    SPIKE = 'spike-sprite.png'
+    SPIKE = 'spike.png'
     BLOCK = 'rock_block.png'
+
+    # decorations
+    SUCCESS = 'successful.png'
+    FAILED = 'failed.png'
+    CLOCK = 'clock.png'
+    LOCKED = 'locked.png'
+    UNLOCKED = 'unlocked.png'
