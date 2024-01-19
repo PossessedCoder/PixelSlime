@@ -89,7 +89,7 @@ class Hero(Cell):
             elif Exit in self._get_collided_tiles():
                 self._arrow_vector._fly = False
                 self.finished = True
-                self._death()
+
 
     def handle(self):
         super().handle()
