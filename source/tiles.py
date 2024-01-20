@@ -9,20 +9,26 @@ from utils import load_media, catch_events
 
 
 class Hero(Cell):
-    IMAGE_NAME = Media.HERO
+    IMAGE_NAME = Media.HERO_STATIC
     USAGE_LIMIT = 1
+    MIN_USAGE = 1
 
     class _ArrowVector(BaseSurface):  # Do not inherit from cell. Field.add_cells() will cause issues
-        IMAGE_NAME = Media.ARROW_VECTOR
+        IMAGE_NAME = Media.HERO_ARROW_VECTOR
 
         def __init__(self, x, y, w, h, parent=None):
             super().__init__(x, y, w, h, parent=parent)
 
             self._angle = 0
-            self._original_image = pygame.transform.scale(load_media(self.IMAGE_NAME), (w, h))
-            self._image = self._original_image.copy()
+            self._original_image = None
+            self._image = None
             self._d_angle = -1
             self._fly = False
+
+        def set_pack(self, pack):
+            self._original_image = pygame.transform.scale(load_media(self.IMAGE_NAME.format(pack)),
+                                                          self.get_rect().size)
+            self._image = self._original_image.copy()
 
         @property
         def flying(self):
@@ -62,6 +68,10 @@ class Hero(Cell):
         if self._arrowed:
             # will be moved in update (_get_arrow_vector_rect() relies on ArrowVector size)
             self._arrow_vector = self._ArrowVector(-1, -1, *self.get_size(), parent=field)
+
+    def set_pack(self, pack):
+        super().set_pack(pack)
+        self._arrow_vector.set_pack(pack)
 
     @property
     def finished(self):
@@ -104,6 +114,17 @@ class Hero(Cell):
                 self._finished = True
             elif Block in self._get_collided_tiles():
                 self._arrow_vector.flying = False
+                o, s = self._get_collided_tiles()[Block][0].get_rect(), self.get_rect()
+                if abs(o[0] - s[0]) > abs(o[1] - s[1]):
+                    if o[0] > s[0]:
+                        self.rotate(90)
+                    else:
+                        self.rotate(-90)
+                else:
+                    self._image = pygame.transform.flip(self._image, False, True)
+
+    def rotate(self, angle):
+        self._image = pygame.transform.rotate(self._image, angle)
 
     def draw(self):
         super().draw()
@@ -133,4 +154,6 @@ class Spike(Cell):
 
 
 class Exit(Cell):
-    IMAGE_NAME = Media.TRASH_BIN
+    IMAGE_NAME = Media.END_LEVEL
+    USAGE_LIMIT = 1
+    MIN_USAGE = 1
