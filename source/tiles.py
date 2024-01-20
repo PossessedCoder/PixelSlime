@@ -85,16 +85,23 @@ class Hero(Cell):
 
     def update(self):
         self.move(self.get_rect().x, self.get_rect().y)
-        self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
+        self._arrow_vector.move(*self._get_arrow_vector_rect().midleft)
         if self._arrowed:
             self._arrow_vector.rotate(1.5)
 
         if self._arrow_vector.flying:
-            angle = self._arrow_vector.angle % 360
-            self.move(self.get_rect().x + self._arrow_vector.direction_rl * (
-                abs(math.sin(math.radians(angle))) if angle > 90
-                else self._arrow_vector.direction_rl * -abs(math.sin(math.radians(angle)))) * self._speed,
-                      self.get_rect().y + -abs(math.cos(math.radians(angle))) * self._speed)
+            if self._arrow_vector.border_1 == 90:
+                angle = self._arrow_vector.angle - 90 % 360
+                self.move(self.get_rect().x + -math.cos(math.radians(angle)) * self._speed,
+                          self.get_rect().y + math.sin(math.radians(angle)) * self._speed)
+            else:
+                angle = self._arrow_vector.angle % 360
+                self.move(self.get_rect().x + -math.sin(math.radians(angle)) * self._speed,
+                          self.get_rect().y + -math.cos(math.radians(angle)) * self._speed)
+            # self.move(self.get_rect().x + (
+            #     abs(math.sin(math.radians(angle))) if angle > 90
+            #     else -abs(math.sin(math.radians(angle)))) * self._speed,
+            #           self.get_rect().y + -abs(math.cos(math.radians(angle))) * self._speed)
 
             if Spike in self._get_collided_tiles():
                 self._dead = True
@@ -105,53 +112,92 @@ class Hero(Cell):
             elif Block in self._get_collided_tiles():
                 self._arrow_vector.flying = False
                 o, s = self._get_collided_tiles()[Block][0].get_rect(), self.get_rect()
-                self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90
-                                               else -abs(math.sin(math.radians(angle)))) * self._speed,
-                          self.get_rect().y + -abs(math.cos(math.radians(angle))) * self._speed)
+                if o.collidepoint(s.midleft) or o.collidepoint(s.midright):
+                    if o.collidepoint(s.midright):
+                        self.right_collide(s, o)
+                    else:
+                        self.left_collide(s, o)
+                elif o.collidepoint(s.midbottom) or o.collidepoint(s.midtop):
+                    if o.collidepoint(self.get_rect().midbottom):
+                        self.bottom_collide(s, o)
+                    else:
+                        self.top_collide(s, o)
 
-                if abs(o[0] - s[0]) > abs(o[1] - s[1]):
-                    if o[0] > s[0]:
-                        self._image = load_media(Media.HERO_RIGHT)
-                        self._arrow_vector.angle = 90
-                        print('right')
-                        self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
-                        self._arrow_vector.direction_rl = -1
-                        print(o.left, s.right)
-                        self.move(o.left - o.width, s.y)
-                    else:
-                        self._image = load_media(Media.HERO_LEFT)
-                        print('left')
-                        self._arrow_vector.angle = 270
-                        self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
-                        self._arrow_vector.direction_rl = 1
-                        self.move(o.right, s.y)
                 else:
-                    if o[1] > s[1]:
-                        self._arrow_vector.angle = 0
-                        self._image = load_media(Media.HERO)
-                        self.angle = 0
-                        print('bottom')
-                        self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
-                        self._arrow_vector.direction_ud = -1
-                    else:
-                        self._arrow_vector.angle = 180
-                        self.angle = 180
-                        self._image = load_media(Media.HERO_TOP)
-                        print('top')
-                        self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
-                        self._arrow_vector.direction_ud = 1
+                    print(s, o)
+                    print(s.left, s.bottom, s.right, s.top)
+                    print(o.left, o.bottom, o.right, o.top)
+                    if o.collidepoint(s.topright):
+                        print('1')
+                        if abs(o.right - s.x) > abs(o.top - s.y):
+                            self.right_collide(s, o)
+                        else:
+                            self.top_collide(s, o)
+                    elif o.collidepoint(s.topleft):
+                        print('2')
+                        if abs(o.left - s.x) > abs(o.top - s.y):
+                            self.left_collide(s, o)
+                        else:
+                            self.top_collide(s, o)
+                    elif o.collidepoint(s.bottomleft):
+                        print('3')
+                        if abs(o.left - s.x) > abs(o.bottom - s.y):
+                            self.left_collide(s, o)
+                        else:
+                            self.bottom_collide(s, o)
+                    elif o.collidepoint(s.bottomright):
+                        print('4')
+                        if abs(o.right - s.x) > abs(o.bottom - s.y):
+                            self.right_collide(s, o)
+                        else:
+                            self.bottom_collide(s, o)
+
+
+
 
             for cord in (self.get_absolute_rect().topleft, self.get_absolute_rect().topright,
                          self.get_absolute_rect().bottomleft, self.get_absolute_rect().bottomright):
                 if not self.parent.is_colliding_field(cord, border=False):
                     self._dead = True
 
-    def rotate(self, angle):
-        if self.angle != 90 and self.angle != -90:
-            self.angle = 90
-            self._image = pygame.transform.rotate(self._image, angle)
-        else:
-            self._image = pygame.transform.flip(self._image, True, True)
+    def right_collide(self, s, o):
+        self._image = pygame.transform.scale(load_media(Media.HERO_RIGHT),
+                                             (self.get_rect().w, self.get_rect().h))
+        self._arrow_vector.angle = 90
+        print('right')
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
+        self._arrow_vector.direction_ud = 1
+
+        self.move(o.left - o.width, s.y)
+
+    def left_collide(self, s, o):
+        self._image = pygame.transform.scale(load_media(Media.HERO_LEFT),
+                                             (self.get_rect().w, self.get_rect().h))
+        print('left')
+        self._arrow_vector.angle = 270
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
+        # self._arrow_vector.direction_rl = -1
+        self.move(o.right, s.y)
+
+    def bottom_collide(self, s, o):
+        self._arrow_vector.angle = 0
+        self._image = pygame.transform.scale(load_media(Media.HERO),
+                                             (self.get_rect().w, self.get_rect().h))
+        self.angle = 0
+        print('bottom')
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
+        self._arrow_vector.direction_ud = 1
+        self.move(s.x, o.top - o.h)
+
+    def top_collide(self, s, o):
+        self._arrow_vector.angle = 180
+        self.angle = 180
+        self._image = pygame.transform.scale(load_media(Media.HERO_TOP),
+                                             (self.get_rect().w, self.get_rect().h))
+        print('top')
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
+        self._arrow_vector.direction_ud = -1
+        self.move(s.x, o.bottom)
 
     def draw(self):
         self.fill((255, 255, 255, 0))
