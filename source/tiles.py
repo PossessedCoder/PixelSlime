@@ -254,6 +254,13 @@ class Block(Cell):
 class Spike(Cell):
     IMAGE_NAME = Media.SPIKE
 
+    def __init__(self, field, coordinates, *groups):
+        super().__init__(field, coordinates, *groups)
+
+    def draw(self):
+        super().draw()
+        pygame.draw.rect(self._field, (255, 0, 0), self.get_rect(), border_radius=3, width=3)
+
 
 class Exit(Cell):
     IMAGE_NAME = Media.END_LEVEL
