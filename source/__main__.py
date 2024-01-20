@@ -31,7 +31,9 @@ class Main:
             if event.type == UserEvents.START_SESSION:
                 self._session = event.uid
             if event.type == UserEvents.SAVE_LEVEL:
-                DataBase().create_level(event.name, event.fdata, self._session)
+                DataBase().create_level(event.name, event.fdata, self._session, event.pack)
+            if event.type == UserEvents.DELETE_LEVEL:
+                DataBase().delete_level(event.level_id)
             if event.type == UserEvents.RUN_WITH_UID:
                 event.runner(self._session)
             if event.type == pygame.QUIT or not self._windows_stack:

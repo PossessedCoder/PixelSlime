@@ -41,6 +41,21 @@ class Media:
     CROSS = 'cross.png'
     DOCUMENT = 'saved_levels.png'
 
+    # packs
+    LAVA_PACK = 'lava_pack'
+    ROCK_PACK = 'rock_pack'
+    SKY_PACK = 'sky_pack'
+    PURPLE_PACK = 'purple_pack'
+
+    HERO_STATIC = '{}/fly.gif/hero1.png'
+    HERO_FLY = '{}/fly.gif'
+    HERO_LANDING = '{}/landing.gif'
+    HERO_ARROW_VECTOR = '{}/other/arrow_vector.png'
+    BACKGROUND = '{}/other/background.png'
+    BLOCK = '{}/other/block.png'
+    END_LEVEL = '{}/other/opened_door.png'
+    SPIKE = '{}/other/spike.png'
+
     # texts
     TITLE = 'title.gif'
     LABEL_EDITOR = 'label_editor.gif'

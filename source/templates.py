@@ -393,6 +393,19 @@ class Panel(BaseSurface):
         self.resize(*rect.size)
         self.move(*rect.topleft)
 
+    def handle(self):
+        super().handle()
+
+        if self.is_minimized():
+            rct = self._minimized_rect
+        elif self.is_maximized() and self._is_active():
+            rct = self._maximized_rect
+        else:
+            return
+
+        self.resize(*rct.size)
+        self.move(*rct.topleft)
+
 
 class LowerPanel(Panel):
 
@@ -973,8 +986,7 @@ class NotificationsPanel(Panel):
 
         self._current_notification = (pygame.Surface((0, 0)), pygame.Surface((0, 0)), pygame.Surface((0, 0)))
 
-        # for tile in get_tiles().values():
-        #    self.add_notification('Вы открыли новый тайл', 'Доступен в редакторе уровней', load_image(tile.IMAGE_NAME))
+        self._is_empty = True
 
     @property
     def current_title(self):
@@ -1019,12 +1031,24 @@ class NotificationsPanel(Panel):
             pygame.Rect(self.get_rect().w - self.get_width(), self.get_rect().h - self.get_height(), *self.get_size())
         )
 
+    def is_empty(self):
+        return self._is_empty
+
+    def clear(self):
+        while True:
+            try:
+                next(self)
+            except StopIteration:
+                return
+
     def handle(self):
         if self.is_minimized():
             try:
                 self._current_notification = next(self)
                 self.maximize(duration=self._current_notification[3])
+                self._is_empty = False
             except StopIteration:
+                self._is_empty = True
                 return
 
         super().handle()

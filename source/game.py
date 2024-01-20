@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import pygame
@@ -176,17 +177,18 @@ class Field(BaseSurface):
         self._grid = color
 
     def _draw_grid(self):
+        cw, ch = self.calc_cell_size()
+
         for row in range(1, self._rows + 1):
-            for col in range(1, self._cols + 1):
-                cell = Cell(self, (row, col))
-                cell.border = self.grid
-                cell.handle()
-                self.blit(cell)
+            pygame.draw.line(self, self.grid, (0, row * ch), (self.get_rect().w, row * ch))
+
+        for col in range(1, self._cols + 1):
+            pygame.draw.line(self, self.grid, (col * cw, 0), (col * cw, self.get_rect().h))
 
     def _draw_cells(self):
-        for cell in self._cells:
-            cell.handle()
-            self.blit(cell)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for cell in self._cells:
+                executor.submit((lambda c: lambda: c.handle() or self.blit(c))(cell))
 
     def draw(self):
         self.fill((255, 255, 255, 0))
@@ -202,6 +204,7 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
     # If you need to access real image used by subclass, use the image property
     IMAGE_NAME = None
     USAGE_LIMIT = None
+    MIN_USAGE = 0
 
     def __init__(self, field, coordinates, *groups):
         self._field = field
@@ -209,17 +212,25 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         self._start_coordinates = Coordinates(*coordinates)
         w, h = field.calc_cell_size()
         x, y = (self._start_coordinates.col - 1) * w, (self._start_coordinates.row - 1) * h
+        self._pack = ...
 
         pygame.sprite.Sprite.__init__(self, *groups)
         BaseSurface.__init__(self, x, y, w, h, parent=field)
 
-        self._image = pygame.transform.scale(load_media(self.IMAGE_NAME), (w, h)) if self.IMAGE_NAME else None
+        self._image = None
         self._color = None
         self._border = None
 
+    def set_pack(self, pack):
+        if self.IMAGE_NAME:
+            self._pack = pack
+            self._image = pygame.transform.scale(load_media(self.IMAGE_NAME.format(pack)), self.get_rect().size)
+
     def to_initial(self):
         self.parent.remove_cells(self)
-        self.parent.add_cells(self.__class__(self.parent, self.start_coordinates, *self.groups()))
+        new = self.__class__(self.parent, self.start_coordinates, *self.groups())
+        new.set_pack(self._pack)
+        self.parent.add_cells(new)
         self.__del__()
 
     def draw(self):

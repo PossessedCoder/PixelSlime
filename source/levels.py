@@ -3,7 +3,7 @@ import pygame
 from constants import Media, SCREEN_HEIGHT, SCREEN_WIDTH, UserEvents
 from level import Level
 from templates import BaseWindow, Button, Freezer, BaseSurface
-from utils import load_media, post_event, DataBase
+from utils import load_media, post_event, DataBase, catch_events
 
 
 class UserLevelsSurface(BaseSurface, Freezer):
@@ -94,6 +94,8 @@ class Levels(BaseWindow):
 
     def __init__(self, uid):
         super().__init__()
+        self._uid = uid
+
         self._but_w, self._but_h = 100, 100
         self._buttons = []
         self.font = pygame.font.SysFont('serif', 100)
@@ -112,34 +114,46 @@ class Levels(BaseWindow):
                                                           background_color=(85, 106, 208),
                                                           border_radius=10)
 
-        system_levels = DataBase().get_system_levels()
-        unlocked_num = DataBase().get_unlocked_levels_num(uid)
-        buttons_per_row = 10
-
-        icon_completed, icon_unlocked, icon_locked = (
+        self._buttons_per_row = 10
+        self._icon_completed, self._icon_unlocked, self._icon_locked = (
             pygame.transform.scale(load_media(i), (self._but_w // 4, self._but_h // 4))
             for i in (Media.SUCCESS, Media.UNLOCKED, Media.LOCKED)
         )
+        self._setup_levels_buttons()
+
+        self.back_button.bind_press(lambda: post_event(UserEvents.CLOSE_CWW))
+        w, h = SCREEN_WIDTH // 6, SCREEN_HEIGHT / 2
+        self.user_levels_list_button.bind_press(
+            lambda: UserLevelsSurface(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self)
+        )
+
+    def _setup_levels_buttons(self):
+        system_levels = DataBase().get_system_levels()
+        unlocked_num = DataBase().get_unlocked_levels_num(self._uid)
 
         x, y = 0, self.get_rect().centery - self._but_w * 3
         for idx, (level_id, _) in enumerate(system_levels):
-            if idx % buttons_per_row == 0:
+            if idx % self._buttons_per_row == 0:
                 y += self._but_h * 1.5
-                x = self.get_rect().centerx - self._but_w * (buttons_per_row / 2 + 0.5 * (buttons_per_row / 2 - 1))
+                x = self.get_rect().centerx - self._but_w\
+                    * (self._buttons_per_row / 2 + 0.5 * (self._buttons_per_row / 2 - 1))
             else:
                 x += self._but_w * 1.5
 
             if idx < unlocked_num - 1:
-                icon = icon_completed
+                icon = self._icon_completed
             elif idx == unlocked_num - 1:
-                icon = icon_unlocked
+                icon = self._icon_unlocked
             else:
-                icon = icon_locked
+                icon = self._icon_locked
 
             surf = BaseSurface(x, y, self._but_w, self._but_h)
-            surf.blit(icon, rect=(self._but_w - icon.get_width() - 8, self._but_h - icon.get_height() - 8, *icon.get_size()))
+            surf.blit(icon,
+                      rect=(self._but_w - icon.get_width() - 8, self._but_h - icon.get_height() - 8, *icon.get_size()))
 
             btn = Button(*surf.get_rect(), parent=self)
+            btn.bind_press((lambda lid: lambda: Level(lid, self._uid))(level_id))
+
             surf.blit(self.font.render(f' {idx + 1} ', False, (220, 220, 220)),
                       rect=(5, 5, surf.get_width() - icon.get_width(), surf.get_height() - icon.get_height()))
             btn.set_not_hovered_view(surf,
@@ -155,14 +169,15 @@ class Levels(BaseWindow):
                                      scale_y=1.03)
             else:
                 btn.set_hovered_view(**btn.get_params(hover=False))
-            btn.bind_press((lambda lid: lambda: Level(lid, uid))(level_id))
+                btn.bind_press()
             self._buttons.append(btn)
 
-        self.back_button.bind_press(lambda: post_event(UserEvents.CLOSE_CWW))
-        w, h = SCREEN_WIDTH // 6, SCREEN_HEIGHT / 2
-        self.user_levels_list_button.bind_press(
-            lambda: UserLevelsSurface(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self)
-        )
+    def eventloop(self):
+        # update info about system levels on any Level close,
+        # will be also called on self close, but window will be instantly shut down after that
+        if UserEvents.CLOSE_CWW in map(lambda event: event.type, catch_events(False)):
+            self._buttons.clear()
+            self._setup_levels_buttons()
 
     def draw(self):
         self.fill((54, 57, 62))

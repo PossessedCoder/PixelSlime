@@ -38,6 +38,10 @@ class Hero(Cell):
         def image(self):
             return self._image.copy()
 
+        @property
+        def angle(self):
+            return self._angle
+
         def rotate(self, angle):
             if self._fly:
                 return
@@ -238,4 +242,6 @@ class Spike(Cell):
 
 
 class Exit(Cell):
-    IMAGE_NAME = Media.TRASH_BIN
+    IMAGE_NAME = Media.END_LEVEL
+    USAGE_LIMIT = 1
+    MIN_USAGE = 1

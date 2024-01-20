@@ -11,7 +11,8 @@ from constants import MEDIA_URL, DB_URL
 
 class _MediaFramesIterator:
 
-    def __init__(self, filename, repeat=False):
+    def __init__(self, filename, repeat=False, alpha=True):
+        self._alpha = alpha
         abs_path = os.path.join(MEDIA_URL, filename)
 
         if not os.path.isdir(abs_path):  # file (not directory)
@@ -29,7 +30,8 @@ class _MediaFramesIterator:
 
     @cache  # if there are memory issues, use functools.lru_cache(maxsize={max_memory_usage_integer})
     def _load_frame(self, rel):
-        return pygame.image.load(os.path.join(MEDIA_URL, rel)).convert_alpha()
+        loaded = pygame.image.load(os.path.join(MEDIA_URL, rel))
+        return loaded.convert_alpha() if self._alpha else loaded.convert()
 
     def __iter__(self):
         return self.__iterator
@@ -39,8 +41,8 @@ class _MediaFramesIterator:
 
 
 # repeats last frame if repeat=False. Otherwise, repeats all frames
-def load_media(filename, repeat=False):
-    iterator = _MediaFramesIterator(filename, repeat=repeat)
+def load_media(filename, repeat=False, keep_alpha=True):
+    iterator = _MediaFramesIterator(filename, repeat=repeat, alpha=keep_alpha)
     return iterator if os.path.isdir(os.path.join(MEDIA_URL, filename)) else next(iterator)
 
 
@@ -71,22 +73,22 @@ def get_tiles(*names):
     return result
 
 
-def _store_queue(fn):
-    _stored_queue = []
+def _memoize(fn):
+    _memoized = []
 
     @wraps(fn)
-    def __wrapper__(_update_queue=True):
-        nonlocal _stored_queue
+    def __wrapper__(update=True, /):
+        nonlocal _memoized
 
-        if _update_queue:
-            _stored_queue = fn(_update_queue)
-        return _stored_queue
+        if update:
+            _memoized = fn(update)  # immutable expected
+        return _memoized
 
     return __wrapper__
 
 
-@_store_queue
-def catch_events(_update_queue=True):
+@_memoize
+def catch_events(_update_=True, /):
     return pygame.event.get()
 
 
@@ -138,10 +140,9 @@ class DataBase:
         return self._cursor.execute(f'SELECT rowcol, tilename FROM {self.TILES_TABLE}'
                                     f' WHERE level_id = {level_id}').fetchall()
 
-    def create_level(self, name, fdata, uid):
-        self._cursor.execute(f'INSERT INTO {self.LEVELS_TABLE} (name, author_id)'
-                             f'VALUES (?, ?)', (name, uid))
-        self._commit()
+    def create_level(self, name, fdata, uid, pack):
+        self._cursor.execute(f'INSERT INTO {self.LEVELS_TABLE} (name, author_id, pack)'
+                             f'VALUES (?, ?, ?)', (name, uid, pack))
         self._save_data(fdata, self.get_level_by_name(name, uid)[0])
 
     def _save_data(self, fdata, level_id):
@@ -170,6 +171,11 @@ class DataBase:
         return get_tiles(*unique) if unique else dict()
 
     def save_completion(self, level_id, uid, time):
+        # no need to store all completions into the self.COMPLETED_LEVELS_TABLE table,
+        # we can actually just put the best (by time) completion
+
+        self._cursor.execute(f'DELETE FROM {self.COMPLETED_LEVELS_TABLE} WHERE level_id = ? and uid = ?',
+                             (level_id, uid))
         self._cursor.execute(f'INSERT INTO {self.COMPLETED_LEVELS_TABLE} (level_id, uid, time) VALUES (?, ?, ?)',
                              (level_id, uid, time))
         self._commit()
@@ -189,7 +195,9 @@ class DataBase:
             f'SELECT l.id, l.name, l.author_id, u.login FROM {self.LEVELS_TABLE} l '
             f'INNER JOIN {self.USERS_TABLE} u ON l.author_id = u.uid '
             f'WHERE l.author_id != 0 '
-            f'LIMIT {items_on_page} OFFSET {(page - 1) * items_on_page}'
+            f'ORDER BY l.id DESC '
+            f'LIMIT ? OFFSET ?',
+            (items_on_page, (page - 1) * items_on_page)
         ).fetchall()
 
     def get_system_levels(self):

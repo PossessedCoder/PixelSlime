@@ -6,7 +6,7 @@ from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media
 from game import Field
 from level import Level
 from templates import Button, BaseWindow, LowerPanel, StyledForm, Freezer, NotificationsPanel
-from utils import load_media, post_event, catch_events, DataBase, get_tiles
+from utils import load_media, post_event, catch_events, DataBase
 
 
 class FormLevelInfo(StyledForm, Freezer):
@@ -66,38 +66,29 @@ class TilesPanel(LowerPanel):
             btn.bind_press(*callbacks)
             self.add_button(btn)
 
-        self._captured_tile = None
+        self._captured_tile_index = None
         self._available_tiles = []
-        self._get_available_tiles(uid)
-
-    def _request_level_info(self):
-        w, h = SCREEN_WIDTH // 6, SCREEN_HEIGHT / 2.5
-        FormLevelInfo(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self.parent)
 
     @property
     def captured_tile(self):
-        return self._captured_tile
+        if self._captured_tile_index is not None:
+            return self._available_tiles[self._captured_tile_index].factory
 
-    def _get_available_tiles(self, uid):
-        tls = get_tiles() #DataBase().get_unlocked_tiles(uid)
-
-        def _tile_preview_onclick(button, factory):
-            self._captured_tile = factory
-            button.captured = True
-            button.emit_hover(state=True)
-
-            for button_it in self._available_tiles:
-                if hasattr(button_it, 'captured') and button_it != button:
-                    del button_it.captured
-                    button_it.remove_hover()
+    def _get_available_tiles(self):
+        self._available_tiles.clear()
+        tls = get_tiles()  # DataBase().get_unlocked_tiles(self._uid)
 
         x, y = 10 + SCREEN_WIDTH // 5, 35
         for tile in tls.values():
-            img = pygame.transform.scale(load_media(tile.IMAGE_NAME), (100, 100))
+            img = pygame.transform.scale(load_media(tile.IMAGE_NAME.format(self.parent.current_pack)), (100, 100))
             btn = Button(x, y, 48, 48, parent=self)
             btn.set_not_hovered_view(img)
             btn.set_hovered_view(img, 1.09, 1.09)
-            btn.bind_press((lambda *args: lambda: _tile_preview_onclick(*args))(btn, tile))
+            btn.bind_press(
+                (lambda t: lambda: setattr(self, '_captured_tile_index',
+                                           tuple(map(lambda k: k.factory, self._available_tiles)).index(t)))(tile)
+            )
+            btn.factory = tile
             self._available_tiles.append(btn)
             x += 65
             if x + btn.get_rect().w > self.get_rect().w:
@@ -110,12 +101,13 @@ class TilesPanel(LowerPanel):
         if self.is_minimized():
             return
 
+        self._get_available_tiles()
         for tile in self._available_tiles:
             tile.handle()
             self.blit(tile)
-            if hasattr(tile, 'captured'):
-                # cannot use properties of _SupportsBorder on Button class since they are refreshed in _draw method
-                pygame.draw.rect(self, (42, 199, 186), tile.get_rect(), width=3)
+            if self._captured_tile_index is not None:
+                pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect(),
+                                 width=3)
 
 
 class Editor(BaseWindow):
@@ -138,21 +130,55 @@ class Editor(BaseWindow):
             parent=self
         )
 
-        y = 15
-        w = h = SCREEN_HEIGHT - y * 2 - (SCREEN_HEIGHT - self._tiles_panel.get_rect().y)
-        x = (SCREEN_WIDTH - w) // 2
+        self._field = Field(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT // 18 * 17, parent=self)
 
-        self._field = Field(x, y, w, h, parent=self)
-
-        self._field.rows, self._field.cols = 15, 15
+        self._field.rows, self._field.cols = 10, 20
         self._field.grid = (255, 255, 255)
 
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
 
+        self._packs = {
+            0: Media.LAVA_PACK,
+            1: Media.ROCK_PACK,
+            2: Media.SKY_PACK,
+            3: Media.PURPLE_PACK
+        }
+        self.current_pack = ...
+        self._bg = ...
+
+        self.set_pack(3)
+
+    def _check_min_usages(self):
+        tfd = tuple(t_[1] for t_ in self.to_field_data())
+
+        for t in get_tiles().values():
+            if t.MIN_USAGE > 0 and tfd.count(t) < t.MIN_USAGE:
+                if self._notifications_panel.is_empty():
+                    self._notifications_panel.add_notification('Недостаточное количество', 'Минимально: 1',
+                                                               load_media(t.IMAGE_NAME.format(self.current_pack)),
+                                                               duration=3)
+                return False
+
+        return True
+
+    def run_level_from_data(self):
+        if self._check_min_usages():
+            Level.from_data(self.to_field_data(), self.current_pack)
+
+    def request_level_info(self):
+        if self._check_min_usages():
+            w, h = SCREEN_WIDTH // 6, SCREEN_HEIGHT / 2.5
+            FormLevelInfo(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self)
+
+    def set_pack(self, idx):
+        self.current_pack = self._packs[idx]
+        self._bg = pygame.transform.scale(load_media(Media.BACKGROUND.format(self.current_pack), keep_alpha=False),
+                                          self._field.get_rect().size)
+
     def save_level(self, name):
         data = tuple((f'{pos.row} {pos.col}', factory.__name__) for pos, factory in self.to_field_data())
-        post_event(UserEvents.SAVE_LEVEL, name=name, fdata=data)
+        post_event(UserEvents.SAVE_LEVEL, name=name, fdata=data, pack=self.current_pack)
         self._notifications_panel.add_notification('Уровень сохранен', f'Название: {name}',
                                                    load_media(Media.SUCCESS), duration=3)
 
@@ -162,7 +188,7 @@ class Editor(BaseWindow):
         for bc in self._buttoned_cells:
             data.append(
                 (self._field.get_position_by_mouse_pos(bc.get_absolute_rect().center),
-                 bc.tile)
+                 bc.factory)
             )
 
         return data
@@ -180,7 +206,8 @@ class Editor(BaseWindow):
                 continue
             if self._tiles_panel.captured_tile.USAGE_LIMIT is not None:
                 # times tile has been used on the field + 1 (current tile, if it will pass checks)
-                n = len(tuple(t.tile for t in self._buttoned_cells if t.tile == self._tiles_panel.captured_tile)) + 1
+                n = len(tuple(t.factory for t in self._buttoned_cells
+                              if t.factory == self._tiles_panel.captured_tile)) + 1
                 if n > self._tiles_panel.captured_tile.USAGE_LIMIT:
                     continue
 
@@ -188,6 +215,7 @@ class Editor(BaseWindow):
             cell = self._tiles_panel.captured_tile(
                 self._field, self._field.get_position_by_mouse_pos(pygame.mouse.get_pos())
             )
+            cell.set_pack(self.current_pack)
             # make a copy of a real tile converting it into a button, so we can easily detect RMB press
             fake_tile = Button(*cell.get_rect(), parent=cell.parent)
             fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile), button='R')
@@ -195,7 +223,7 @@ class Editor(BaseWindow):
             fake_tile.set_hovered_view(cell.image)
             fake_tile.set_not_hovered_view(cell.image)
             # save the factory in the .tile attribute to access it on field save
-            fake_tile.tile = self._tiles_panel.captured_tile
+            fake_tile.factory = self._tiles_panel.captured_tile
             for r in self._buttoned_cells:
                 # if there is any tile on position of the new tile, old one will be removed
                 if fake_tile.get_rect().colliderect(r.get_rect()):
@@ -229,7 +257,7 @@ class Editor(BaseWindow):
         return _updater
 
     def draw(self):
-        self.fill((54, 57, 62))
+        self.blit(self._bg)
 
         self._field_updater()
 
