@@ -4,7 +4,7 @@ from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media
 from game import Field
 from level import Level
 from templates import Button, BaseWindow, LowerPanel, StyledForm, Freezer, NotificationsPanel
-from utils import load_media, post_event, catch_events, DataBase
+from utils import load_media, post_event, catch_events, get_tiles
 
 
 class FormLevelInfo(StyledForm, Freezer):
@@ -39,13 +39,14 @@ class TilesPanel(LowerPanel):
 
     def __init__(self, uid, minimized_rect, maximized_rect, resize_time, parent=None):
         super().__init__(minimized_rect, maximized_rect, resize_time, parent=parent)
+        self._uid = uid
 
         buttons_not_hovered_view = {'scale_x': 1, 'scale_y': 1, 'border_radius': 24}
         buttons_hovered_view = {'scale_x': 1.05, 'scale_y': 1.05, 'border_radius': 21}
         buttons_data = (
-            (Media.RUN, (lambda: Level.from_data(self.parent.to_field_data()),)),
+            (Media.RUN, (self.parent.run_level_from_data,)),
             (Media.CLEAR, (lambda: setattr(self.parent, '_buttoned_cells', list()),)),
-            (Media.SAVE, (lambda: self._request_level_info(),)),
+            (Media.SAVE, (lambda: self.parent.request_level_info(),)),
             # actually bad practice to use setattr for parent's private attributes, but cannot use events everywhere,
             # because pygame has limitations on user events number: maximum 9 (with ids from 24 to 32)
             (Media.CLOSE_WINDOW, (lambda: post_event(UserEvents.CLOSE_CWW),))
@@ -250,7 +251,7 @@ class Editor(BaseWindow):
         return _updater
 
     def draw(self):
-        self.fill((54, 57, 62))
+        self.blit(self._bg)
 
         self._field_updater()
 
