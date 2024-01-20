@@ -257,7 +257,7 @@ class Editor(BaseWindow):
         return _updater
 
     def draw(self):
-        self.blit(self._bg)
+        self.fill((54, 57, 62))
 
         self._field_updater()
 
