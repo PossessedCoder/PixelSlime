@@ -111,7 +111,12 @@ class Hero(Cell):
                 self._finished = True
             elif Block in self._get_collided_tiles():
                 self._arrow_vector.flying = False
+
                 o, s = self._get_collided_tiles()[Block][0].get_rect(), self.get_rect()
+                for el in self._get_collided_tiles()[Block]:
+                    if el.get_rect().collidepoint(s.midtop) or el.get_rect().collidepoint(s.midright)\
+                          or el.get_rect().collidepoint(s.midleft) or el.get_rect().collidepoint(s.midbottom):
+                        o = el.get_rect()
                 if o.collidepoint(s.midleft) or o.collidepoint(s.midright):
                     if o.collidepoint(s.midright):
                         self.right_collide(s, o)
@@ -129,31 +134,28 @@ class Hero(Cell):
                     print(o.left, o.bottom, o.right, o.top)
                     if o.collidepoint(s.topright):
                         print('1')
-                        if abs(o.right - s.x) > abs(o.top - s.y):
+                        if abs(o.left - s.right) > abs(o.bottom - s.top):
                             self.right_collide(s, o)
                         else:
                             self.top_collide(s, o)
                     elif o.collidepoint(s.topleft):
                         print('2')
-                        if abs(o.left - s.x) > abs(o.top - s.y):
+                        if abs(o.left - s.left) > abs(o.bottom - s.top):
                             self.left_collide(s, o)
                         else:
                             self.top_collide(s, o)
                     elif o.collidepoint(s.bottomleft):
                         print('3')
-                        if abs(o.left - s.x) > abs(o.bottom - s.y):
+                        if abs(o.right - s.left) > abs(o.top - s.bottom):
                             self.left_collide(s, o)
                         else:
                             self.bottom_collide(s, o)
                     elif o.collidepoint(s.bottomright):
                         print('4')
-                        if abs(o.right - s.x) > abs(o.bottom - s.y):
+                        if abs(o.left - s.right) > abs(o.top - s.bottom):
                             self.right_collide(s, o)
                         else:
                             self.bottom_collide(s, o)
-
-
-
 
             for cord in (self.get_absolute_rect().topleft, self.get_absolute_rect().topright,
                          self.get_absolute_rect().bottomleft, self.get_absolute_rect().bottomright):
