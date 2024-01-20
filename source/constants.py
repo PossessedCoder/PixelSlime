@@ -48,6 +48,9 @@ class Media:
 
     # tiles (and their dependencies)
     HERO = 'hero.png'
+    HERO_TOP = 'hero_top.png'
+    HERO_LEFT = 'hero_left.png'
+    HERO_RIGHT = 'hero_right.png'
     ARROW_VECTOR = 'arrow_vector.png'
     SPIKE = 'spike.png'
     BLOCK = 'rock_block.png'
