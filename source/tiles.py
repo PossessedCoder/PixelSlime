@@ -114,8 +114,8 @@ class Hero(Cell):
 
                 o, s = self._get_collided_tiles()[Block][0].get_rect(), self.get_rect()
                 for el in self._get_collided_tiles()[Block]:
-                    if el.get_rect().collidepoint(s.midtop) or el.get_rect().collidepoint(s.midright)\
-                          or el.get_rect().collidepoint(s.midleft) or el.get_rect().collidepoint(s.midbottom):
+                    if el.get_rect().collidepoint(s.midtop) or el.get_rect().collidepoint(s.midright) \
+                            or el.get_rect().collidepoint(s.midleft) or el.get_rect().collidepoint(s.midbottom):
                         o = el.get_rect()
                 if o.collidepoint(s.midleft) or o.collidepoint(s.midright):
                     if o.collidepoint(s.midright):
@@ -227,6 +227,14 @@ class Block(Cell):
 
 class Spike(Cell):
     IMAGE_NAME = Media.SPIKE
+
+    def __init__(self, field, coordinates, *groups):
+        super().__init__(field, coordinates, *groups)
+        x, y, w, h = self.get_rect()
+
+    def draw(self):
+        super().draw()
+        pygame.draw.rect(self._field, (255, 0, 0), self._rect, border_radius=3, width=3)
 
 
 class Exit(Cell):
