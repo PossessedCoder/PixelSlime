@@ -64,6 +64,22 @@ class TilesPanel(LowerPanel):
         self._captured_tile_index = None
         self._available_tiles = []
 
+        self._buttons_change_pack = []
+        x = self.get_rect().centerx - (len(self.parent.packs) // 2) * 35
+        y = self.get_rect().h - 45
+        for k, t in self.parent.packs.items():
+            block = pygame.transform.scale(load_media(Media.BLOCK.format(t)), (35, 35))
+            btn = Button(x, y, *block.get_size(), parent=self)
+            btn.set_hovered_view(block, scale_x=1.1, scale_y=1.1)
+            btn.set_not_hovered_view(block)
+            btn.bind_press((lambda p, b: lambda: [b_.remove_hover() for b_ in self._buttons_change_pack if b_.hovered]
+                            and b.emit_hover(True) or self.parent.set_pack(p))(k, btn))
+            print(t, self.parent.current_pack)
+            if t == self.parent.current_pack:
+                btn.emit_hover(True)
+            self._buttons_change_pack.append(btn)
+            x += 35
+
     @property
     def captured_tile(self):
         if self._captured_tile_index is not None:
@@ -103,11 +119,24 @@ class TilesPanel(LowerPanel):
             if self._captured_tile_index is not None:
                 pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect())
 
+        for btn in self._buttons_change_pack:
+            btn.handle()
+            self.blit(btn)
+
 
 class Editor(BaseWindow):
 
     def __init__(self, uid):
         super().__init__()
+
+        self.packs = {
+            0: Media.LAVA_PACK,
+            1: Media.ROCK_PACK,
+            2: Media.SKY_PACK,
+            3: Media.PURPLE_PACK
+        }
+        self.current_pack = ...
+        self._bg = ...
 
         self._tiles_panel = TilesPanel(
             uid,
@@ -132,16 +161,7 @@ class Editor(BaseWindow):
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
 
-        self._packs = {
-            0: Media.LAVA_PACK,
-            1: Media.ROCK_PACK,
-            2: Media.SKY_PACK,
-            3: Media.PURPLE_PACK
-        }
-        self.current_pack = ...
-        self._bg = ...
-
-        self.set_pack(2)
+        self.set_pack(1)
 
     def _check_min_usages(self):
         tfd = tuple(t_[1] for t_ in self.to_field_data())
@@ -166,9 +186,11 @@ class Editor(BaseWindow):
             FormLevelInfo(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self)
 
     def set_pack(self, idx):
-        self.current_pack = self._packs[idx]
+        self.current_pack = self.packs[idx]
         self._bg = pygame.transform.scale(load_media(Media.BACKGROUND.format(self.current_pack), keep_alpha=False),
                                           self._field.get_rect().size)
+        for cl in self._field.get_cells():
+            cl.set_pack(self.current_pack)
 
     def save_level(self, name):
         data = tuple((f'{pos.row} {pos.col}', factory.__name__) for pos, factory in self.to_field_data())
@@ -212,7 +234,7 @@ class Editor(BaseWindow):
             cell.set_pack(self.current_pack)
             # make a copy of a real tile converting it into a button, so we can easily detect RMB press
             fake_tile = Button(*cell.get_rect(), parent=cell.parent)
-            fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile))
+            fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile), button='R')
             # setting view of a button (same in both hovered and not hovered)
             fake_tile.set_hovered_view(cell.image)
             fake_tile.set_not_hovered_view(cell.image)
