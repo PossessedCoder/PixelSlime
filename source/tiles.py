@@ -9,22 +9,27 @@ from utils import load_media, catch_events
 
 
 class Hero(Cell):
-    IMAGE_NAME = Media.HERO
+    IMAGE_NAME = Media.HERO_STATIC
     USAGE_LIMIT = 1
+    MIN_USAGE = 1
 
     class _ArrowVector(BaseSurface):  # Do not inherit from cell. Field.add_cells() will cause issues
-        IMAGE_NAME = Media.ARROW_VECTOR
+        IMAGE_NAME = Media.HERO_ARROW_VECTOR
 
         def __init__(self, x, y, w, h, parent=None):
             super().__init__(x, y, w, h, parent=parent)
 
-            self.angle = 0
-            self._original_image = pygame.transform.scale(load_media(self.IMAGE_NAME), (w, h))
-            self._image = self._original_image.copy()
-            self.d_angle = -1
+            self._angle = 0
+            self._original_image = None
+            self._image = None
+            self._d_angle = -1
             self.border_1, self.border_2 = 90, 270
             self._fly = False
-            self.direction_rl, self.direction_ud = 1, 1
+
+        def set_pack(self, pack):
+            self._original_image = pygame.transform.scale(load_media(self.IMAGE_NAME.format(pack)),
+                                                          self.get_rect().size)
+            self._image = self._original_image.copy()
 
         @property
         def flying(self):
@@ -45,10 +50,10 @@ class Hero(Cell):
         def rotate(self, angle):
             if self._fly:
                 return
-            if self.angle == self.border_1 or self.angle == self.border_2:
-                self.d_angle *= -1
-            self.angle = (self.angle + angle * self.d_angle) % 360
-            self._image = pygame.transform.rotate(self._original_image, self.angle)
+            if self.angle == 90 or self.angle == 270:
+                self._d_angle *= -1
+            self._angle = (self.angle + angle * self._d_angle) % 360
+            self._image = pygame.transform.rotate(self._original_image, self._angle)
 
         def draw(self):
             self.fill((255, 255, 255, 0))
@@ -61,10 +66,13 @@ class Hero(Cell):
         self._speed = 10
         self._finished = False
         self._dead = False
-        self.angle = 0
         if self._arrowed:
             # will be moved in update (_get_arrow_vector_rect() relies on ArrowVector size)
             self._arrow_vector = self._ArrowVector(-1, -1, *self.get_size(), parent=field)
+
+    def set_pack(self, pack):
+        super().set_pack(pack)
+        self._arrow_vector.set_pack(pack)
 
     @property
     def finished(self):
@@ -89,7 +97,7 @@ class Hero(Cell):
 
     def update(self):
         self.move(self.get_rect().x, self.get_rect().y)
-        self._arrow_vector.move(*self._get_arrow_vector_rect().midleft)
+        self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
         if self._arrowed:
             self._arrow_vector.rotate(1.5)
 
@@ -180,13 +188,13 @@ class Hero(Cell):
         self._image = pygame.transform.scale(load_media(Media.HERO_LEFT),
                                              (self.get_rect().w, self.get_rect().h))
         print('left')
-        self._arrow_vector.angle = 270
+        self._arrow_vector._angle = 270
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
         # self._arrow_vector.direction_rl = -1
         self.move(o.right, s.y)
 
     def bottom_collide(self, s, o):
-        self._arrow_vector.angle = 0
+        self._arrow_vector._angle = 0
         self._image = pygame.transform.scale(load_media(Media.HERO),
                                              (self.get_rect().w, self.get_rect().h))
         self.angle = 0
@@ -196,7 +204,7 @@ class Hero(Cell):
         self.move(s.x, o.top - o.h)
 
     def top_collide(self, s, o):
-        self._arrow_vector.angle = 180
+        self._arrow_vector._angle = 180
         self.angle = 180
         self._image = pygame.transform.scale(load_media(Media.HERO_TOP),
                                              (self.get_rect().w, self.get_rect().h))
@@ -231,14 +239,6 @@ class Block(Cell):
 
 class Spike(Cell):
     IMAGE_NAME = Media.SPIKE
-
-    def __init__(self, field, coordinates, *groups):
-        super().__init__(field, coordinates, *groups)
-        x, y, w, h = self.get_rect()
-
-    def draw(self):
-        super().draw()
-        pygame.draw.rect(self._field, (255, 0, 0), self._rect, border_radius=3, width=3)
 
 
 class Exit(Cell):

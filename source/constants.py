@@ -8,7 +8,6 @@ MEDIA_URL = os.path.join(BASE_DIR, 'media')
 DB_URL = os.path.join(BASE_DIR, 'db.sqlite3')
 
 FPS = 60
-# 1920x1080 recommended
 SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = (1920, 1080)
 
 
@@ -20,8 +19,8 @@ class UserEvents:
     FREEZE_CWW = pygame.USEREVENT + 2  # attrs: freezer
     UNFREEZE_CWW = pygame.USEREVENT + 3  # attrs: freezer
     START_SESSION = pygame.USEREVENT + 4  # attrs: uid
-    SAVE_LEVEL = pygame.USEREVENT + 5  # attrs: name, fdata
-    DELETE_LEVEL = pygame.USEREVENT + 6  # attrs: name
+    SAVE_LEVEL = pygame.USEREVENT + 5  # attrs: level_id, fdata, pack
+    DELETE_LEVEL = pygame.USEREVENT + 6  # attrs: level_id
     LEVEL_COMPLETED = pygame.USEREVENT + 7  # attrs: level_id, time
     RUN_WITH_UID = pygame.USEREVENT + 8  # attrs: runner
 
@@ -60,15 +59,6 @@ class Media:
     TITLE = 'title.gif'
     LABEL_EDITOR = 'label_editor.gif'
     LABEL_LEVELS = 'label_levels.gif'
-
-    # tiles (and their dependencies)
-    HERO = 'hero.png'
-    HERO_TOP = 'hero_top.png'
-    HERO_LEFT = 'hero_left.png'
-    HERO_RIGHT = 'hero_right.png'
-    ARROW_VECTOR = 'arrow_vector.png'
-    SPIKE = 'spike.png'
-    BLOCK = 'rock_block.png'
 
     # decorations
     SUCCESS = 'successful.png'
