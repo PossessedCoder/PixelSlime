@@ -74,7 +74,6 @@ class TilesPanel(LowerPanel):
             btn.set_not_hovered_view(block)
             btn.bind_press((lambda p, b: lambda: [b_.remove_hover() for b_ in self._buttons_change_pack if b_.hovered]
                             and b.emit_hover(True) or self.parent.set_pack(p))(k, btn))
-            print(t, self.parent.current_pack)
             if t == self.parent.current_pack:
                 btn.emit_hover(True)
             self._buttons_change_pack.append(btn)
@@ -116,8 +115,8 @@ class TilesPanel(LowerPanel):
         for tile in self._available_tiles:
             tile.handle()
             self.blit(tile)
-            if self._captured_tile_index is not None:
-                pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect())
+        if self._captured_tile_index is not None:
+            pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect(), width=3)
 
         for btn in self._buttons_change_pack:
             btn.handle()
@@ -135,7 +134,7 @@ class Editor(BaseWindow):
             2: Media.SKY_PACK,
             3: Media.PURPLE_PACK
         }
-        self.current_pack = ...
+        self.current_pack = self.packs[0]
         self._bg = ...
 
         self._tiles_panel = TilesPanel(
@@ -161,7 +160,7 @@ class Editor(BaseWindow):
         self._buttoned_cells = []
         self._field_updater = self._get_field_updater()
 
-        self.set_pack(1)
+        self.set_pack(0)
 
     def _check_min_usages(self):
         tfd = tuple(t_[1] for t_ in self.to_field_data())
