@@ -23,8 +23,8 @@ class Hero(Cell):
             self._original_image = None
             self._image = None
             self._d_angle = -1
-            self.border_1, self.border_2 = 90, 270
             self._fly = False
+            self.border_1, self.border_2 = 90, 270
 
         def set_pack(self, pack):
             self._original_image = pygame.transform.scale(load_media(self.IMAGE_NAME.format(pack)),
@@ -47,10 +47,14 @@ class Hero(Cell):
         def angle(self):
             return self._angle
 
+        @angle.setter
+        def angle(self, v):
+            self._angle = v
+
         def rotate(self, angle):
             if self._fly:
                 return
-            if self.angle == 90 or self.angle == 270:
+            if self.angle == self.border_1 or self.angle == self.border_2:
                 self._d_angle *= -1
             self._angle = (self.angle + angle * self._d_angle) % 360
             self._image = pygame.transform.rotate(self._original_image, self._angle)
@@ -66,6 +70,8 @@ class Hero(Cell):
         self._speed = 10
         self._finished = False
         self._dead = False
+        print(self._image)
+        self._original_image = self._image
         if self._arrowed:
             # will be moved in update (_get_arrow_vector_rect() relies on ArrowVector size)
             self._arrow_vector = self._ArrowVector(-1, -1, *self.get_size(), parent=field)
@@ -175,8 +181,7 @@ class Hero(Cell):
                     self._dead = True
 
     def right_collide(self, s, o):
-        self._image = pygame.transform.scale(load_media(Media.HERO_RIGHT),
-                                             (self.get_rect().w, self.get_rect().h))
+        self.rotate(270)
         self._arrow_vector.angle = 90
         print('right')
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
@@ -185,29 +190,26 @@ class Hero(Cell):
         self.move(o.left - o.width, s.y)
 
     def left_collide(self, s, o):
-        self._image = pygame.transform.scale(load_media(Media.HERO_LEFT),
-                                             (self.get_rect().w, self.get_rect().h))
+        # self._image = pygame.transform.scale(load_media(Media.HERO_LEFT),
+        #                                      (self.get_rect().w, self.get_rect().h))
         print('left')
-        self._arrow_vector._angle = 270
+        self.rotate(90)
+        self._arrow_vector.angle = 270
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
         # self._arrow_vector.direction_rl = -1
         self.move(o.right, s.y)
 
     def bottom_collide(self, s, o):
-        self._arrow_vector._angle = 0
-        self._image = pygame.transform.scale(load_media(Media.HERO),
-                                             (self.get_rect().w, self.get_rect().h))
-        self.angle = 0
+        self._arrow_vector.angle = 0
+        self.rotate(0)
         print('bottom')
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
         self._arrow_vector.direction_ud = 1
         self.move(s.x, o.top - o.h)
 
     def top_collide(self, s, o):
-        self._arrow_vector._angle = 180
-        self.angle = 180
-        self._image = pygame.transform.scale(load_media(Media.HERO_TOP),
-                                             (self.get_rect().w, self.get_rect().h))
+        self._arrow_vector.angle = 180
+        self.rotate(180)
         print('top')
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
         self._arrow_vector.direction_ud = -1
@@ -219,6 +221,9 @@ class Hero(Cell):
 
         self._arrow_vector.handle()
         self._field.blit(self._arrow_vector)
+
+    def rotate(self, angle):
+        self._image = pygame.transform.rotate(self._original_image, angle)
 
     def _get_collided_tiles(self):
         collided = dict()
