@@ -96,15 +96,23 @@ class Hero(Cell):
 
     def update(self):
         self.move(self.get_rect().x, self.get_rect().y)
-        self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
+        self._arrow_vector.move(*self._get_arrow_vector_rect().midleft)
         if self._arrowed:
             self._arrow_vector.rotate(1.5)
 
         if self._arrow_vector.flying:
-            angle = self._arrow_vector.angle % 360
-            self.move(self.get_rect().x + (abs(math.sin(math.radians(angle))) if angle > 90
-                                           else -abs(math.sin(math.radians(angle)))) * self._speed,
-                      self.get_rect().y + -abs(math.cos(math.radians(angle))) * self._speed)
+            if self._arrow_vector.border_1 == 90:
+                angle = self._arrow_vector.angle - 90 % 360
+                self.move(self.get_rect().x + -math.cos(math.radians(angle)) * self._speed,
+                          self.get_rect().y + math.sin(math.radians(angle)) * self._speed)
+            else:
+                angle = self._arrow_vector.angle % 360
+                self.move(self.get_rect().x + -math.sin(math.radians(angle)) * self._speed,
+                          self.get_rect().y + -math.cos(math.radians(angle)) * self._speed)
+            # self.move(self.get_rect().x + (
+            #     abs(math.sin(math.radians(angle))) if angle > 90
+            #     else -abs(math.sin(math.radians(angle)))) * self._speed,
+            #           self.get_rect().y + -abs(math.cos(math.radians(angle))) * self._speed)
 
             if Spike in self._get_collided_tiles():
                 self._dead = True
@@ -114,19 +122,98 @@ class Hero(Cell):
                 self._finished = True
             elif Block in self._get_collided_tiles():
                 self._arrow_vector.flying = False
-                o, s = self._get_collided_tiles()[Block][0].get_rect(), self.get_rect()
-                if abs(o[0] - s[0]) > abs(o[1] - s[1]):
-                    if o[0] > s[0]:
-                        self.rotate(90)
-                    else:
-                        self.rotate(-90)
-                else:
-                    self._image = pygame.transform.flip(self._image, False, True)
 
-    def rotate(self, angle):
-        self._image = pygame.transform.rotate(self._image, angle)
+                o, s = self._get_collided_tiles()[Block][0].get_rect(), self.get_rect()
+                for el in self._get_collided_tiles()[Block]:
+                    if el.get_rect().collidepoint(s.midtop) or el.get_rect().collidepoint(s.midright) \
+                            or el.get_rect().collidepoint(s.midleft) or el.get_rect().collidepoint(s.midbottom):
+                        o = el.get_rect()
+                if o.collidepoint(s.midleft) or o.collidepoint(s.midright):
+                    if o.collidepoint(s.midright):
+                        self.right_collide(s, o)
+                    else:
+                        self.left_collide(s, o)
+                elif o.collidepoint(s.midbottom) or o.collidepoint(s.midtop):
+                    if o.collidepoint(self.get_rect().midbottom):
+                        self.bottom_collide(s, o)
+                    else:
+                        self.top_collide(s, o)
+
+                else:
+                    print(s, o)
+                    print(s.left, s.bottom, s.right, s.top)
+                    print(o.left, o.bottom, o.right, o.top)
+                    if o.collidepoint(s.topright):
+                        print('1')
+                        if abs(o.left - s.right) > abs(o.bottom - s.top):
+                            self.right_collide(s, o)
+                        else:
+                            self.top_collide(s, o)
+                    elif o.collidepoint(s.topleft):
+                        print('2')
+                        if abs(o.left - s.left) > abs(o.bottom - s.top):
+                            self.left_collide(s, o)
+                        else:
+                            self.top_collide(s, o)
+                    elif o.collidepoint(s.bottomleft):
+                        print('3')
+                        if abs(o.right - s.left) > abs(o.top - s.bottom):
+                            self.left_collide(s, o)
+                        else:
+                            self.bottom_collide(s, o)
+                    elif o.collidepoint(s.bottomright):
+                        print('4')
+                        if abs(o.left - s.right) > abs(o.top - s.bottom):
+                            self.right_collide(s, o)
+                        else:
+                            self.bottom_collide(s, o)
+
+            for cord in (self.get_absolute_rect().topleft, self.get_absolute_rect().topright,
+                         self.get_absolute_rect().bottomleft, self.get_absolute_rect().bottomright):
+                if not self.parent.is_colliding_field(cord, border=False):
+                    self._dead = True
+
+    def right_collide(self, s, o):
+        self._image = pygame.transform.scale(load_media(Media.HERO_RIGHT),
+                                             (self.get_rect().w, self.get_rect().h))
+        self._arrow_vector.angle = 90
+        print('right')
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
+        self._arrow_vector.direction_ud = 1
+
+        self.move(o.left - o.width, s.y)
+
+    def left_collide(self, s, o):
+        self._image = pygame.transform.scale(load_media(Media.HERO_LEFT),
+                                             (self.get_rect().w, self.get_rect().h))
+        print('left')
+        self._arrow_vector.angle = 270
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
+        # self._arrow_vector.direction_rl = -1
+        self.move(o.right, s.y)
+
+    def bottom_collide(self, s, o):
+        self._arrow_vector.angle = 0
+        self._image = pygame.transform.scale(load_media(Media.HERO),
+                                             (self.get_rect().w, self.get_rect().h))
+        self.angle = 0
+        print('bottom')
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
+        self._arrow_vector.direction_ud = 1
+        self.move(s.x, o.top - o.h)
+
+    def top_collide(self, s, o):
+        self._arrow_vector.angle = 180
+        self.angle = 180
+        self._image = pygame.transform.scale(load_media(Media.HERO_TOP),
+                                             (self.get_rect().w, self.get_rect().h))
+        print('top')
+        self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
+        self._arrow_vector.direction_ud = -1
+        self.move(s.x, o.bottom)
 
     def draw(self):
+        self.fill((255, 255, 255, 0))
         super().draw()
 
         self._arrow_vector.handle()

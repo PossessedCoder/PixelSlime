@@ -1,5 +1,3 @@
-import sqlite3
-
 import pygame
 
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media
@@ -29,12 +27,8 @@ class FormLevelInfo(StyledForm, Freezer):
         if not self.as_tuple()[0]:
             self.fields[0].errors.append('Не может быть пустым')
 
-        try:
-            self.parent.save_level(self.as_tuple()[0])
-            return True
-        except sqlite3.Error:
-            self.fields[0].errors.append('Уровень с таким названием уже существует')
-            return False
+        self.parent.save_level(self.as_tuple()[0])
+        return True
 
     def on_success(self):
         super().on_success()
@@ -107,8 +101,7 @@ class TilesPanel(LowerPanel):
             tile.handle()
             self.blit(tile)
             if self._captured_tile_index is not None:
-                pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect(),
-                                 width=3)
+                pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect())
 
 
 class Editor(BaseWindow):
@@ -148,7 +141,7 @@ class Editor(BaseWindow):
         self.current_pack = ...
         self._bg = ...
 
-        self.set_pack(3)
+        self.set_pack(2)
 
     def _check_min_usages(self):
         tfd = tuple(t_[1] for t_ in self.to_field_data())
@@ -219,7 +212,7 @@ class Editor(BaseWindow):
             cell.set_pack(self.current_pack)
             # make a copy of a real tile converting it into a button, so we can easily detect RMB press
             fake_tile = Button(*cell.get_rect(), parent=cell.parent)
-            fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile), button='R')
+            fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile))
             # setting view of a button (same in both hovered and not hovered)
             fake_tile.set_hovered_view(cell.image)
             fake_tile.set_not_hovered_view(cell.image)
