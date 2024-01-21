@@ -4,7 +4,7 @@ from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media
 from game import Field
 from level import Level
 from templates import Button, BaseWindow, LowerPanel, StyledForm, Freezer, NotificationsPanel
-from utils import load_media, post_event, catch_events, get_tiles
+from utils import load_media, post_event, catch_events, get_tiles, DataBase
 
 
 class FormLevelInfo(StyledForm, Freezer):
@@ -86,7 +86,7 @@ class TilesPanel(LowerPanel):
 
     def _get_available_tiles(self):
         self._available_tiles.clear()
-        tls = get_tiles()  # DataBase().get_unlocked_tiles(self._uid)
+        tls = DataBase().get_unlocked_tiles(self._uid)
 
         x, y = 10 + SCREEN_WIDTH // 5, 35
         for tile in tls.values():
