@@ -137,7 +137,7 @@ class DataBase:
         return self._cursor.execute(f'SELECT * FROM {self.LEVELS_TABLE} WHERE id = ?', (level_id,)).fetchone()
 
     def get_level_field_data(self, level_id):
-        return self._cursor.execute(f'SELECT rowcol, tilename FROM {self.TILES_TABLE}'
+        return self._cursor.execute(f'SELECT rowcol, tilename, angle FROM {self.TILES_TABLE}'
                                     f' WHERE level_id = {level_id}').fetchall()
 
     def create_level(self, name, fdata, uid, pack):
@@ -146,8 +146,8 @@ class DataBase:
         self._save_data(fdata, self.get_level_by_name(name, uid)[0])
 
     def _save_data(self, fdata, level_id):
-        s = ', '.join((str((f'{rc}', f'{tn}', level_id)) for rc, tn in fdata))
-        self._cursor.execute(f'INSERT INTO {self.TILES_TABLE} (rowcol, tilename, level_id) VALUES {s};')
+        s = ', '.join((str((f'{rc}', f'{tn}', an, level_id)) for rc, tn, an in fdata))
+        self._cursor.execute(f'INSERT INTO {self.TILES_TABLE} (rowcol, tilename, angle, level_id) VALUES {s};')
         self._commit()
 
     def delete_level(self, level_id):
