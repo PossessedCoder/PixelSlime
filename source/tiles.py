@@ -112,12 +112,6 @@ class Hero(Cell):
         self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
         if self._arrowed:
             self._arrow_vector.rotate(2)
-
-        if not self._arrow_vector.flying and \
-            not any(cl.get_rect().collidepoint((self.get_rect().centerx, self.get_rect().bottom - self._speed))
-                    for cl in self._field.get_cells()):
-            self.move(self.get_rect().x, self.get_rect().y - self._speed)
-
         if self._arrow_vector.flying:
             if self._arrow_vector.border_1 == 90:
                 angle = self._arrow_vector.angle - 90 % 360
