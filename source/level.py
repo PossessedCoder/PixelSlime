@@ -175,7 +175,7 @@ class Level(BaseWindow):
             texts = [f'Ваше лучшее время: {self.best_time if self.best_time else "-"}']
             if self._level_info:
                 texts.insert(0, f'Название уровня: {self._level_info[1]}')
-            if self._uid > 0:
+            if self._author_info:
                 texts.insert(0, f'Создатель уровня: {self._author_info[1]}')
             if self.current_time:
                 ct = str(self.current_time)
