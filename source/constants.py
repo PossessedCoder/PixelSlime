@@ -46,14 +46,12 @@ class Media:
     SKY_PACK = 'sky_pack'
     PURPLE_PACK = 'purple_pack'
 
-    HERO_STATIC = '{}/fly.gif/hero1.png'
-    HERO_FLY = '{}/fly.gif'
-    HERO_LANDING = '{}/landing.gif'
-    HERO_ARROW_VECTOR = '{}/other/arrow_vector.png'
-    BACKGROUND = '{}/other/background.png'
-    BLOCK = '{}/other/block.png'
-    END_LEVEL = '{}/other/opened_door.png'
-    SPIKE = '{}/other/spike.png'
+    HERO_STATIC = '{}/hero.png'
+    HERO_ARROW_VECTOR = '{}/arrow_vector.png'
+    BACKGROUND = '{}/background.png'
+    BLOCK = '{}/block.png'
+    END_LEVEL = '{}/opened_door.png'
+    SPIKE = '{}/spike.png'
 
     # texts
     TITLE = 'title.gif'
