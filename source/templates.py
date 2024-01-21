@@ -984,29 +984,37 @@ class NotificationsPanel(Panel):
         self._text_surface = pygame.Surface(self._maximized_rect.size, pygame.SRCALPHA)
         self._queue = Queue()
 
-        self._current_notification = (pygame.Surface((0, 0)), pygame.Surface((0, 0)), pygame.Surface((0, 0)))
+        self._current_notification = []
+        self._current_image = None
 
         self._is_empty = True
+        self._start_showing_current = None
 
     @property
     def current_title(self):
-        return self._current_notification[0]
+        return self._current_notification[0] if self._current_notification[0] else pygame.Surface((0, 0))
 
     @property
     def current_text(self):
-        return self._current_notification[1]
+        return self._current_notification[1] if self._current_notification[1] else pygame.Surface((0, 0))
 
     @property
     def current_image(self):
-        return self._current_notification[2]
+        return self._current_image if self._current_image else pygame.Surface((0, 0))
 
-    def add_notification(self, title=..., text=..., image=..., duration=float('inf')):
+    def add_notification(self, title, *images, text=..., duration=float('inf')):
         title = pygame.font.SysFont('serif', 18).render(title if isinstance(title, str) else '', True, (0, 0, 0))
         text = pygame.font.SysFont(
             'arial', 11, italic=True).render(text if isinstance(text, str) else '', True, (69, 69, 69))
-        image = pygame.transform.scale(image.copy(), (self.get_height() // 2, self.get_height() // 2)) \
-            if isinstance(image, pygame.Surface) else pygame.Surface((0, 0))
-        self._queue.put((title, text, image, duration))
+        if duration != float('inf') and len(images) > 1:
+            show_delay = duration / len(images)
+        elif len(images) > 1:
+            raise ValueError('Multiple images cannot be provided for infinite notification')
+        else:
+            show_delay = 0
+        images = (pygame.transform.scale(image.copy(), (self.get_height() // 2, self.get_height() // 2))
+                  if isinstance(image, pygame.Surface) else pygame.Surface((0, 0)) for image in images)
+        self._queue.put((title, text, images, duration, show_delay))
 
     def draw(self):
         self.fill((204, 191, 190))
@@ -1022,6 +1030,12 @@ class NotificationsPanel(Panel):
             ((self._text_surface.get_width() - self.current_text.get_width() + self.current_image.get_width()) // 2,
              (self._text_surface.get_height() - self.current_text.get_height() + self.current_title.get_height()) // 2)
         )
+        if self._start_showing_current + timedelta(seconds=self._current_notification[-1]) < datetime.now():
+            try:
+                self._current_image = next(self._current_notification[2])
+                self._start_showing_current = datetime.now()
+            except StopIteration:
+                pass
         self._text_surface.blit(
             self.current_image,
             (self.current_image.get_width() // 4, self.current_image.get_height() // 2)
@@ -1047,6 +1061,8 @@ class NotificationsPanel(Panel):
                 self._current_notification = next(self)
                 self.maximize(duration=self._current_notification[3])
                 self._is_empty = False
+                self._start_showing_current = datetime.now()
+                self._current_image = next(self._current_notification[2])
             except StopIteration:
                 self._is_empty = True
                 return

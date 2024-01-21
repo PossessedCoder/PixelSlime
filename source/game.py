@@ -212,7 +212,7 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         self._start_coordinates = Coordinates(*coordinates)
         w, h = field.calc_cell_size()
         x, y = (self._start_coordinates.col - 1) * w, (self._start_coordinates.row - 1) * h
-        self._pack = ...
+        self.pack = ...
 
         pygame.sprite.Sprite.__init__(self, *groups)
         BaseSurface.__init__(self, x, y, w, h, parent=field)
@@ -223,13 +223,13 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
 
     def set_pack(self, pack):
         if self.IMAGE_NAME:
-            self._pack = pack
+            self.pack = pack
             self._image = pygame.transform.scale(load_media(self.IMAGE_NAME.format(pack)), self.get_rect().size)
 
     def to_initial(self):
         self.parent.remove_cells(self)
         new = self.__class__(self.parent, self.start_coordinates, *self.groups())
-        new.set_pack(self._pack)
+        new.set_pack(self.pack)
         self.parent.add_cells(new)
         self.__del__()
 
