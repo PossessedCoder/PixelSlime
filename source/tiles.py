@@ -250,12 +250,6 @@ class Block(Cell):
 class Spike(Cell):
     IMAGE_NAME = Media.SPIKE
 
-    def __init__(self, field, coordinates, *groups):
-        super().__init__(field, coordinates, *groups)
-
-    def draw(self):
-        super().draw()
-
 
 class Exit(Cell):
     IMAGE_NAME = Media.END_LEVEL
