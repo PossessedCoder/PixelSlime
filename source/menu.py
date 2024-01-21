@@ -12,7 +12,7 @@ class Menu(BaseWindow):
         super().__init__()
 
         w, h = SCREEN_WIDTH // 6, SCREEN_HEIGHT / 2.5
-        AuthTabs(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self)
+        # AuthTabs(SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 2 - h // 2, w, h, parent=self)
         self._title_frames = load_media(Media.TITLE)
         self._label_levels_frames = load_media(Media.LABEL_LEVELS)
         self._label_editor_frames = load_media(Media.LABEL_EDITOR)

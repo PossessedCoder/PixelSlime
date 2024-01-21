@@ -197,7 +197,7 @@ class Editor(BaseWindow):
             self._field.blit(cl)
 
     def save_level(self, name):
-        data = tuple((f'{pos.row} {pos.col}', factory.__name__) for pos, factory in self.to_field_data())
+        data = tuple((f'{pos.row} {pos.col}', factory.__name__, angle) for pos, factory, angle in self.to_field_data())
         post_event(UserEvents.SAVE_LEVEL, name=name, fdata=data, pack=self.current_pack)
         self._notifications_panel.add_notification('Уровень сохранен', load_media(Media.SUCCESS),
                                                    text=f'Название: {name}', duration=3)
@@ -208,7 +208,8 @@ class Editor(BaseWindow):
         for bc in self._buttoned_cells:
             data.append(
                 (self._field.get_position_by_mouse_pos(bc.get_absolute_rect().center),
-                 bc.factory)
+                 bc.factory,
+                 bc.angle)
             )
 
         return data
@@ -249,6 +250,8 @@ class Editor(BaseWindow):
             # save the factory in the .tile attribute to access it on field save
             fake_tile.factory = self._tiles_panel.captured_tile
             fake_tile.instance = cell
+            fake_tile.angle = 0
+            fake_tile.bind_press(lambda: setattr(fake_tile, 'angle', (fake_tile.angle - 90) % 360), button='R')
             self._buttoned_cells.append(fake_tile)
 
     def _get_field_updater(self):
@@ -258,14 +261,23 @@ class Editor(BaseWindow):
         self._field.handle()  # draw grid
         previous_buttoned_cells = self._buttoned_cells.copy()
 
+        def _compare():
+            if len(previous_buttoned_cells) != len(self._buttoned_cells):
+                return False
+            for prev, cur in zip(previous_buttoned_cells, self._buttoned_cells):
+                if prev != cur or prev.angle != cur.angle:
+                    return False
+            return True
+
         def _updater():
             nonlocal previous_buttoned_cells
 
-            if self._buttoned_cells != previous_buttoned_cells:  # skip drawing if there is no changes
+            if _compare():  # skip drawing if there is no changes
                 self._field.handle()
                 for ft in self._buttoned_cells:
                     ft.draw()
-                    self._field.blit(ft)
+                    rotated = pygame.transform.rotate(ft, ft.angle)
+                    self._field.blit(rotated, ft.get_rect())
 
             previous_buttoned_cells = self._buttoned_cells.copy()
 

@@ -122,7 +122,7 @@ class Level(BaseWindow):
     def _setup_field(self, data, pack):
         tls = get_tiles()
 
-        for coordinates, factory in data:
+        for coordinates, factory, angle in data:
             if isinstance(coordinates, str):
                 # finds groups of digits (at least one digit in group) and throws them into Coordinates instance
                 coordinates = Coordinates(
@@ -132,6 +132,25 @@ class Level(BaseWindow):
                 factory = tls[factory]
             cell = factory(self._field, coordinates)
             cell.set_pack(pack)
+            if isinstance(cell, Hero):
+                cw, ch = self._field.calc_cell_size()
+
+                s = cell.get_rect().copy()
+                o = s.copy()
+                if angle == 180:
+                    o.top -= ch
+                    cell.top_collide(s, o)
+                elif angle == 90:
+                    o.right += cw
+                    cell.right_collide(s, o)
+                elif angle == 0:
+                    o.bottom += ch
+                    cell.bottom_collide(s, o)
+                elif angle == 270:
+                    o.left -= cw
+                    cell.left_collide(s, o)
+            else:
+                cell.rotate(angle)
             self._field.add_cells(cell)
 
         self._pack = pack

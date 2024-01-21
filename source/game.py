@@ -220,6 +220,11 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         self._image = None
         self._color = None
         self._border = None
+        self._angle = 0
+
+    def rotate(self, angle):
+        self._angle = angle
+        self._image = pygame.transform.scale(pygame.transform.rotate(self._image, angle), self.get_rect().size)
 
     def set_pack(self, pack):
         if self.IMAGE_NAME:
@@ -230,8 +235,11 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         self.parent.remove_cells(self)
         new = self.__class__(self.parent, self.start_coordinates, *self.groups())
         new.set_pack(self.pack)
+        new.rotate(self._angle)
         self.parent.add_cells(new)
         self.__del__()
+
+        return new
 
     def draw(self):
         if self.color:
