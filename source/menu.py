@@ -1,7 +1,7 @@
 from account import AuthTabs
 from constants import Media, SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents
 from levels import Levels
-from source.editor import Editor
+from editor import Editor
 from templates import BaseWindow, Button
 from utils import load_media, post_event
 
