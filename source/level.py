@@ -213,12 +213,7 @@ class Level(BaseWindow):
             return
 
         if hero.finished:
-            if not self._best_time or self.current_time < self._best_time:
-                self._best_time = self.current_time
-                if self._uid != -1:
-                    DataBase().save_completion(self._level_id, self._uid, self.current_time)
-                    post_event(UserEvents.LEVEL_COMPLETED, level_id=self._level_id, time=self.current_time)
-            if self._author_info and self._author_info[0] == 0:
+            if self._level_info and self._level_info[2] == 0:
                 for tl in DataBase().get_new_tiles(self._uid, self._level_id).values():
                     pk = (load_media(tl.IMAGE_NAME.format(pack)) for pack in (Media.LAVA_PACK, Media.ROCK_PACK,
                                                                               Media.SKY_PACK, Media.ROCK_PACK))
@@ -226,6 +221,11 @@ class Level(BaseWindow):
                                                                 *pk,
                                                                 text='Доступен в редакторе',
                                                                 duration=3)
+            if not self._best_time or self.current_time < self._best_time:
+                self._best_time = self.current_time
+                if self._uid != -1:
+                    DataBase().save_completion(self._level_id, self._uid, self.current_time)
+                    post_event(UserEvents.LEVEL_COMPLETED, level_id=self._level_id, time=self.current_time)
 
         if hero.dead or hero.finished:
             self.restart()
