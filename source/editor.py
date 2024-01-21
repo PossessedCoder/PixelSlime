@@ -115,8 +115,8 @@ class TilesPanel(LowerPanel):
         for tile in self._available_tiles:
             tile.handle()
             self.blit(tile)
-            if self._captured_tile_index is not None:
-                pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect())
+        if self._captured_tile_index is not None:
+            pygame.draw.rect(self, (42, 199, 186), self._available_tiles[self._captured_tile_index].get_rect(), width=3)
 
         for btn in self._buttons_change_pack:
             btn.handle()
