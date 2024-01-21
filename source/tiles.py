@@ -188,7 +188,6 @@ class Hero(Cell):
     def right_collide(self, s, o):
         self.rotate(90)
         self._arrow_vector.angle = 90
-        print('right')
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
         self._arrow_vector_rect_delta = (-50, 50)
         self._arrow_vector.direction_ud = 1
@@ -198,7 +197,6 @@ class Hero(Cell):
     def left_collide(self, s, o):
         # self._image = pygame.transform.scale(load_media(Media.HERO_LEFT),
         #                                      (self.get_rect().w, self.get_rect().h))
-        print('left')
         self.rotate(270)
         self._arrow_vector.angle = 270
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
@@ -209,7 +207,6 @@ class Hero(Cell):
     def bottom_collide(self, s, o):
         self._arrow_vector.angle = 0
         self.rotate(0)
-        print('bottom')
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
         self._arrow_vector_rect_delta = (0, 0)
         self._arrow_vector.direction_ud = 1
@@ -218,7 +215,6 @@ class Hero(Cell):
     def top_collide(self, s, o):
         self._arrow_vector.angle = 180
         self.rotate(180)
-        print('top')
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
         self._arrow_vector_rect_delta = (0, 100)
         self._arrow_vector.direction_ud = -1
@@ -259,7 +255,6 @@ class Spike(Cell):
 
     def draw(self):
         super().draw()
-        pygame.draw.rect(self._field, (255, 0, 0), self.get_rect(), border_radius=3, width=3)
 
 
 class Exit(Cell):
