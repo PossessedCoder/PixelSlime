@@ -168,8 +168,9 @@ class Editor(BaseWindow):
         for t in get_tiles().values():
             if t.MIN_USAGE > 0 and tfd.count(t) < t.MIN_USAGE:
                 if self._notifications_panel.is_empty():
-                    self._notifications_panel.add_notification('Недостаточное количество', 'Минимально: 1',
+                    self._notifications_panel.add_notification('Недостаточное количество',
                                                                load_media(t.IMAGE_NAME.format(self.current_pack)),
+                                                               text='Минимально: 1',
                                                                duration=3)
                 return False
 
@@ -188,14 +189,18 @@ class Editor(BaseWindow):
         self.current_pack = self.packs[idx]
         self._bg = pygame.transform.scale(load_media(Media.BACKGROUND.format(self.current_pack), keep_alpha=False),
                                           self._field.get_rect().size)
-        for cl in self._field.get_cells():
-            cl.set_pack(self.current_pack)
+        for cl in self._buttoned_cells:
+            cl.instance.set_pack(self.current_pack)
+            cl.set_hovered_view(cl.instance.image)
+            cl.set_not_hovered_view(cl.instance.image)
+            cl.draw()
+            self._field.blit(cl)
 
     def save_level(self, name):
         data = tuple((f'{pos.row} {pos.col}', factory.__name__) for pos, factory in self.to_field_data())
         post_event(UserEvents.SAVE_LEVEL, name=name, fdata=data, pack=self.current_pack)
-        self._notifications_panel.add_notification('Уровень сохранен', f'Название: {name}',
-                                                   load_media(Media.SUCCESS), duration=3)
+        self._notifications_panel.add_notification('Уровень сохранен', load_media(Media.SUCCESS),
+                                                   text=f'Название: {name}', duration=3)
 
     def to_field_data(self):
         data = []
@@ -217,6 +222,11 @@ class Editor(BaseWindow):
                 continue
             if self._tiles_panel.get_rect().collidepoint(*pygame.mouse.get_pos()):
                 continue
+            for r in self._buttoned_cells:
+                # if there is any tile on position of the new tile, old one will be removed
+                if r.get_rect().collidepoint(pygame.mouse.get_pos()):
+                    self._buttoned_cells.remove(r)
+                    return
             if not self._tiles_panel.captured_tile:
                 continue
             if self._tiles_panel.captured_tile.USAGE_LIMIT is not None:
@@ -233,17 +243,12 @@ class Editor(BaseWindow):
             cell.set_pack(self.current_pack)
             # make a copy of a real tile converting it into a button, so we can easily detect RMB press
             fake_tile = Button(*cell.get_rect(), parent=cell.parent)
-            fake_tile.bind_press(lambda: self._buttoned_cells.remove(fake_tile), button='R')
             # setting view of a button (same in both hovered and not hovered)
             fake_tile.set_hovered_view(cell.image)
             fake_tile.set_not_hovered_view(cell.image)
             # save the factory in the .tile attribute to access it on field save
             fake_tile.factory = self._tiles_panel.captured_tile
-            for r in self._buttoned_cells:
-                # if there is any tile on position of the new tile, old one will be removed
-                if fake_tile.get_rect().colliderect(r.get_rect()):
-                    self._buttoned_cells.remove(r)
-                    break
+            fake_tile.instance = cell
             self._buttoned_cells.append(fake_tile)
 
     def _get_field_updater(self):

@@ -70,9 +70,8 @@ class Hero(Cell):
         self._speed = 15
         self._finished = False
         self._dead = False
-        print(self._image)
         self._original_image = None
-        self._arrow_vector_rect_delta = (0, 0)
+        self._arrow_vector_rect_delta = (0, -10)
         if self._arrowed:
             # will be moved in update (_get_arrow_vector_rect() relies on ArrowVector size)
             self._arrow_vector = self._ArrowVector(-1, -1, *self.get_size(), parent=field)
@@ -152,29 +151,22 @@ class Hero(Cell):
                         self.top_collide(s, o)
 
                 else:
-                    print(s, o)
-                    print(s.left, s.bottom, s.right, s.top)
-                    print(o.left, o.bottom, o.right, o.top)
                     if o.collidepoint(s.topright):
-                        print('1')
                         if abs(o.left - s.right) > abs(o.bottom - s.top):
                             self.right_collide(s, o)
                         else:
                             self.top_collide(s, o)
                     elif o.collidepoint(s.topleft):
-                        print('2')
                         if abs(o.left - s.left) > abs(o.bottom - s.top):
                             self.left_collide(s, o)
                         else:
                             self.top_collide(s, o)
                     elif o.collidepoint(s.bottomleft):
-                        print('3')
                         if abs(o.right - s.left) > abs(o.top - s.bottom):
                             self.left_collide(s, o)
                         else:
                             self.bottom_collide(s, o)
                     elif o.collidepoint(s.bottomright):
-                        print('4')
                         if abs(o.left - s.right) > abs(o.top - s.bottom):
                             self.right_collide(s, o)
                         else:
@@ -189,18 +181,16 @@ class Hero(Cell):
         self.rotate(90)
         self._arrow_vector.angle = 90
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
-        self._arrow_vector_rect_delta = (-50, 50)
+        self._arrow_vector_rect_delta = (-60, 50)
         self._arrow_vector.direction_ud = 1
 
         self.move(o.left - o.width, s.y)
 
     def left_collide(self, s, o):
-        # self._image = pygame.transform.scale(load_media(Media.HERO_LEFT),
-        #                                      (self.get_rect().w, self.get_rect().h))
         self.rotate(270)
         self._arrow_vector.angle = 270
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 0, 180
-        self._arrow_vector_rect_delta = (50, 50)
+        self._arrow_vector_rect_delta = (60, 50)
         # self._arrow_vector.direction_rl = -1
         self.move(o.right, s.y)
 
@@ -208,7 +198,7 @@ class Hero(Cell):
         self._arrow_vector.angle = 0
         self.rotate(0)
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
-        self._arrow_vector_rect_delta = (0, 0)
+        self._arrow_vector_rect_delta = (0, -10)
         self._arrow_vector.direction_ud = 1
         self.move(s.x, o.top - o.h)
 
@@ -216,7 +206,7 @@ class Hero(Cell):
         self._arrow_vector.angle = 180
         self.rotate(180)
         self._arrow_vector.border_1, self._arrow_vector.border_2 = 90, 270
-        self._arrow_vector_rect_delta = (0, 100)
+        self._arrow_vector_rect_delta = (0, 110)
         self._arrow_vector.direction_ud = -1
         self.move(s.x, o.bottom)
 

@@ -47,7 +47,9 @@ class Level(BaseWindow):
         self._level_info = DataBase().get_level_by_id(level_id)
         self._user_info = DataBase().get_user(uid)
         if self._level_info:
-            self._author_info = DataBase().get_user(self._level_info[-1])
+            self._author_info = DataBase().get_user(self._level_info[2])
+        else:
+            self._author_info = None
 
         self._start_panel = StartPanel(
             self._level_info[2] == uid if self._level_info else False,
@@ -70,6 +72,8 @@ class Level(BaseWindow):
             resize_time=0.5,
             parent=self
         )
+
+        self._pack = ...
 
         self._field = Field(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT // 18 * 17, parent=self)
         self._field.rows, self._field.cols = 10, 20
@@ -105,7 +109,7 @@ class Level(BaseWindow):
                 executor.submit(cl.to_initial)
 
     def restart(self):
-        self._notifications_panel.add_notification('Нажмите любую кнопку', image=load_media(Media.CLOCK))
+        self._notifications_panel.add_notification('Нажмите любую кнопку', load_media(Media.CLOCK))
         self._start_time = None
         self._field_to_initial()
         self._field.handle()
@@ -129,6 +133,8 @@ class Level(BaseWindow):
             cell = factory(self._field, coordinates)
             cell.set_pack(pack)
             self._field.add_cells(cell)
+
+        self._pack = pack
 
     def eventloop(self):
         for event in catch_events(False):
@@ -188,15 +194,19 @@ class Level(BaseWindow):
             return
 
         if hero.finished:
-            for tl in DataBase().get_new_tiles(self._uid, self._level_id).values():
-                self._notifications_panel2.add_notification('Открыт новый блок',
-                                                            'Доступен в редакторе', load_media(tl.IMAGE_NAME),
-                                                            duration=3)
             if not self._best_time or self.current_time < self._best_time:
                 self._best_time = self.current_time
                 if self._uid != -1:
                     DataBase().save_completion(self._level_id, self._uid, self.current_time)
                     post_event(UserEvents.LEVEL_COMPLETED, level_id=self._level_id, time=self.current_time)
+            if self._author_info and self._author_info[0] == 0:
+                for tl in DataBase().get_new_tiles(self._uid, self._level_id).values():
+                    pk = (load_media(tl.IMAGE_NAME.format(pack)) for pack in (Media.LAVA_PACK, Media.ROCK_PACK,
+                                                                              Media.SKY_PACK, Media.ROCK_PACK))
+                    self._notifications_panel2.add_notification('Открыт новый блок',
+                                                                *pk,
+                                                                text='Доступен в редакторе',
+                                                                duration=3)
 
         if hero.dead or hero.finished:
             self.restart()
