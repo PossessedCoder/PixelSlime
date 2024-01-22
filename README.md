@@ -9,7 +9,7 @@
 To clone repository and install required packages use the following commands:
 
 <pre>
-$ git clone https://github.com/DouleLove/SpeedPixels.git
-$ cd SpeedPixels
+$ git clone https://github.com/PossessedCoder/PixelSlime.git
+$ cd PixelSlime
 $ python -m pip install -r requirements.txt
 </pre>
