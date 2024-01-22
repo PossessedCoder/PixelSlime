@@ -1,3 +1,7 @@
+__all__ = (
+    'Levels',
+)
+
 import pygame
 
 from constants import Media, SCREEN_HEIGHT, SCREEN_WIDTH, UserEvents

@@ -1,3 +1,7 @@
+__all__ = (
+    'Level',
+)
+
 import re
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor

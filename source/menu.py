@@ -1,3 +1,7 @@
+__all__ = (
+    'Menu',
+)
+
 from account import AuthTabs
 from constants import Media, SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents
 from levels import Levels

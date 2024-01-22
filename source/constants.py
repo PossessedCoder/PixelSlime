@@ -1,3 +1,15 @@
+__all__ = (
+    'BASE_DIR',
+    'DB_URL',
+    'FPS',
+    'SCREEN_SIZE',
+    'SCREEN_WIDTH',
+    'SCREEN_HEIGHT',
+    'MEDIA_URL',
+    'UserEvents',
+    'Media'
+)
+
 import os
 from pathlib import Path
 

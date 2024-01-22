@@ -1,3 +1,8 @@
+__all__ = ()
+__title__ = 'PixelSlime'
+__licence__ = 'MIT'
+__version__ = '3.11'
+
 import sys
 
 import pygame

@@ -1,3 +1,7 @@
+__all__ = (
+    'Editor',
+)
+
 import pygame
 
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, UserEvents, Media

@@ -1,3 +1,7 @@
+__all__ = (
+    'AuthTabs',
+)
+
 import pygame
 
 from constants import UserEvents

@@ -1,3 +1,10 @@
+__all__ = (
+    'Hero',
+    'Block',
+    'Spike',
+    'Exit'
+)
+
 import math
 
 import pygame
