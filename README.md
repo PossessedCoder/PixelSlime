@@ -1,4 +1,4 @@
-# SpeedPixels
+# PixelSlime
 2D game written in pygame
 
 <br>
