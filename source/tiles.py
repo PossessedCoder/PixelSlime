@@ -115,6 +115,8 @@ class Hero(Cell):
         )
 
     def update(self):
+        super().update()
+
         self.move(self.get_rect().x, self.get_rect().y)
         self._arrow_vector.move(*self._get_arrow_vector_rect().topleft)
         if self._arrowed:
@@ -249,7 +251,8 @@ class Hero(Cell):
         collided = dict()
 
         for t in self.parent.get_cells():
-            if t == self or not self.get_rect().colliderect(t.get_rect()):
+            # check rect collision firstly since it is noticeably faster than masks collision check
+            if t == self or not pygame.sprite.collide_rect(self, t) or not pygame.sprite.collide_mask(self, t):
                 continue
             if t.__class__ not in collided:
                 collided[t.__class__] = []
