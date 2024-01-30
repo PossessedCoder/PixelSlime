@@ -224,9 +224,17 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         BaseSurface.__init__(self, x, y, w, h, parent=field)
 
         self._image = None
+        self._mask = None
         self._color = None
         self._border = None
         self._angle = 0
+
+        # attributes required for pygame.sprite.collide_mask()
+        self.rect = ...
+        self.mask = ...
+
+    def update(self, *args, **kwargs) -> None:
+        self.rect = self.get_rect().copy()
 
     def rotate(self, angle):
         self._angle = angle
@@ -236,6 +244,8 @@ class Cell(pygame.sprite.Sprite, BaseSurface):
         if self.IMAGE_NAME:
             self.pack = pack
             self._image = pygame.transform.scale(load_media(self.IMAGE_NAME.format(pack)), self.get_rect().size)
+            self.mask = pygame.mask.from_surface(self._image)
+            self.rect = self.get_rect()
 
     def to_initial(self):
         self.parent.remove_cells(self)
