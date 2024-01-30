@@ -163,9 +163,10 @@ class DataBase:
         self._commit()
 
     def get_unlocked_levels_num(self, uid):
-        return self._cursor.execute(
-            f'SELECT count() FROM {self.COMPLETED_LEVELS_TABLE} WHERE uid = ?', (uid,)
-        ).fetchone()[0] + 1
+        return len(self._cursor.execute(
+            f'SELECT DISTINCT id FROM {self.COMPLETED_LEVELS_TABLE} c '
+            f'INNER JOIN {self.LEVELS_TABLE} l ON c.level_id = l.id WHERE uid = ? AND l.author_id = 0', (uid,)
+        ).fetchall()) + 1
 
     def get_new_tiles(self, uid, level_id):
         unlocked = self.get_unlocked_tiles(uid)
